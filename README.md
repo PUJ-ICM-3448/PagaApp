@@ -1,2 +1,2 @@
-# proyecto-equipo-4
-Proyecto equipo 4 - Northsoft
+# PagaApp
+PagaApp - Equipo 4 - Northsoft
