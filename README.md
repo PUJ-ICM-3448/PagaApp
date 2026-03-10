@@ -94,6 +94,3 @@ El proyecto utiliza las siguientes herramientas y tecnologías:
 - **Figma** para el diseño de mockups
 - **GitHub** para el control de versiones
 
----
-
-# Estructura del Proyecto
