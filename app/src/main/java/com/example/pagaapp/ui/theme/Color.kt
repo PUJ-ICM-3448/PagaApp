@@ -20,3 +20,5 @@ val TextSecondary = Color(0xFF6B7280)
 // Navigation
 val NavActive = PrimaryGreen
 val NavInactive = Color(0xFF9CA3AF)
+val CashPointsGreen = Color(0xFFBFE6C8)
+val CashDeliveryBlue = Color(0xFFBFD3F2)
