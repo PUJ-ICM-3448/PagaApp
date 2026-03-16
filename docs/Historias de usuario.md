@@ -124,14 +124,28 @@
 - El sistema guarda los cambios realizados.
 
 ---
-
-## HU10 – Detectar amigos cercanos
+## HU10 – Solicitar entrega de efectivo a domicilio
 
 **Como** usuario  
-**Quiero** detectar amigos cercanos mediante ubicación  
-**Para** facilitar el registro de gastos compartidos  
+**Quiero** solicitar entrega de efectivo a domicilio  
+**Para** recibir dinero sin tener que desplazarme  
 
 ### Criterios de aceptación
+- El usuario puede seleccionar **Cash Delivery** desde la pantalla principal.
 - El sistema obtiene la ubicación del usuario.
-- El sistema detecta amigos cercanos.
-- El usuario puede seleccionar un amigo cercano para registrar un gasto.
+- El usuario puede confirmar la solicitud de entrega.
+- El sistema muestra el estado de la solicitud.
+
+---
+
+## HU11 – Buscar puntos de efectivo cercanos
+
+**Como** usuario  
+**Quiero** encontrar puntos de efectivo cercanos  
+**Para** retirar dinero de forma rápida  
+
+### Criterios de aceptación
+- El usuario puede acceder a **Cash Points**.
+- El sistema obtiene la ubicación del usuario.
+- El sistema muestra puntos cercanos disponibles.
+- El usuario puede seleccionar un punto para ver más información.
