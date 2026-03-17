@@ -1,4 +1,6 @@
 package com.example.pagaapp.ui.screens.history
 
-class HistoryUiState {
-}
+data class HistoryUiState(
+    val transactions: List<HistoryModel> = emptyList(),
+    val selectedFilter: String = "All"
+)
