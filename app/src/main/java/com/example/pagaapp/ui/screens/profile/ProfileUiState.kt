@@ -1,4 +1,5 @@
 package com.example.pagaapp.ui.screens.profile
 
-class ProfileUiState {
-}
+data class ProfileUiState(
+    val profile: ProfileModel? = null
+)
