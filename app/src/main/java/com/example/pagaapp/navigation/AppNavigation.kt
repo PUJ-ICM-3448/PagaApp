@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.pagaapp.ui.screens.expenses.ExpensesScreen
+import com.example.pagaapp.ui.screens.expenses.RegisterPaymentScreen
 import com.example.pagaapp.ui.screens.history.HistoryScreen
 import com.example.pagaapp.ui.screens.home.HomeScreen
 import com.example.pagaapp.ui.screens.location.LocationScreen
@@ -34,6 +37,14 @@ fun AppNavigation() {
 
             composable(Routes.Expenses.route) {
                 ExpensesScreen(navController)
+            }
+
+            composable(
+                route = Routes.RegisterPayment.route,
+                arguments = listOf(navArgument("debtId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val debtId = backStackEntry.arguments?.getString("debtId")
+                RegisterPaymentScreen(navController, debtId)
             }
 
             composable(Routes.History.route) {

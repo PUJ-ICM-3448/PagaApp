@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.pagaapp.navigation.Routes
 import com.example.pagaapp.ui.theme.*
 
 @Composable
@@ -76,8 +77,13 @@ fun ExpensesScreen(
             }
 
             items(uiState.youOweList) { debt ->
-                // Modificado para mostrar siempre el botón en esta sección
-                DebtCard(debt = debt, showAction = true)
+                DebtCard(
+                    debt = debt, 
+                    showAction = true,
+                    onActionClick = {
+                        navController.navigate(Routes.RegisterPayment.createRoute(debt.id))
+                    }
+                )
             }
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -123,7 +129,7 @@ fun SectionHeader(title: String, amount: Double, isExpense: Boolean) {
 }
 
 @Composable
-fun DebtCard(debt: DebtItem, showAction: Boolean = false) {
+fun DebtCard(debt: DebtItem, showAction: Boolean = false, onActionClick: () -> Unit = {}) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -176,7 +182,7 @@ fun DebtCard(debt: DebtItem, showAction: Boolean = false) {
                 // Amount and Status
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "${if (debt.amount > 0) "" else ""}$${String.format("%.2f", debt.amount)}",
+                        text = "$${String.format("%.2f", debt.amount)}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (debt.avatarColor == IncomeGreen) IncomeGreen else ExpenseRed
@@ -204,7 +210,7 @@ fun DebtCard(debt: DebtItem, showAction: Boolean = false) {
             if (showAction) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = onActionClick,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
                     shape = RoundedCornerShape(12.dp),

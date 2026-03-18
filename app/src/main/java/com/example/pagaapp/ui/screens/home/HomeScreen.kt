@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -51,6 +52,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import com.example.pagaapp.navigation.Routes
 
 
 
@@ -97,7 +99,7 @@ fun HomeScreen(
         item { HomeHeader() }
         item {  BalanceCard() }
        item { ActionButtonsRow() }
-        item {QuickAccessCards() }
+        item {QuickAccessCards(navController) }
         item {
             Text(
                 text = "Pending Debts",
@@ -290,7 +292,7 @@ fun BalanceCard(){
         }
     }
 @Composable
-fun QuickAccessCards() {
+fun QuickAccessCards(navController: NavController) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -299,14 +301,16 @@ fun QuickAccessCards() {
             title = "Cash Points",
             subtitle = "Find nearby",
             backgroundColor = CashPointsGreen,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            onClick = { /* TODO */ }
         )
 
         QuickCard(
             title = "Cash Delivery",
             subtitle = "Request now",
             backgroundColor = CashDeliveryBlue,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            onClick = { navController.navigate(Routes.Tracking.route) }
         )
     }
 }
@@ -317,10 +321,11 @@ fun QuickCard(
     title: String,
     subtitle: String,
     backgroundColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         )
