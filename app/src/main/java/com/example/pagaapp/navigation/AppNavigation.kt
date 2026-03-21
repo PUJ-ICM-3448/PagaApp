@@ -3,10 +3,12 @@ package com.example.pagaapp.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pagaapp.ui.screens.expenses.ExpensesScreen
@@ -14,23 +16,33 @@ import com.example.pagaapp.ui.screens.expenses.RegisterPaymentScreen
 import com.example.pagaapp.ui.screens.history.HistoryScreen
 import com.example.pagaapp.ui.screens.home.HomeScreen
 import com.example.pagaapp.ui.screens.location.LocationScreen
+import com.example.pagaapp.ui.screens.login.LoginScreen
 import com.example.pagaapp.ui.screens.profile.ProfileScreen
 import com.example.pagaapp.ui.screens.tracking.TrackingScreen
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
         bottomBar = {
-            AppBottomBar(navController)
+            // Only show bottom bar if we are NOT in the Login screen
+            if (currentRoute != Routes.Login.route) {
+                AppBottomBar(navController)
+            }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Routes.Home.route,
+            startDestination = Routes.Login.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Routes.Login.route) {
+                LoginScreen(navController)
+            }
+
             composable(Routes.Home.route) {
                 HomeScreen(navController)
             }
