@@ -1,4 +1,6 @@
 package com.example.pagaapp.ui.screens.location
 
-class LocationUiState {
-}
+data class LocationUiState(
+    val locations: List<LocationModel> = emptyList(),
+    val isLoading: Boolean = false
+)
