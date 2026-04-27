@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,9 +29,9 @@ import com.example.pagaapp.ui.theme.*
 fun RegisterPaymentScreen(
     navController: NavController,
     debtId: String?,
-    expensesViewModel: ExpensesViewModel = viewModel() // Reuse to get data, or create a specific one
+    expensesViewModel: ExpensesViewModel = viewModel()
 ) {
-    // Find the debt details from the main ViewModel (sharing for simplicity in this example)
+    val context = LocalContext.current
     val uiState by expensesViewModel.uiState.collectAsState()
     val debt = uiState.youOweList.find { it.id == debtId } ?: uiState.owedToYouList.find { it.id == debtId }
 
@@ -52,7 +53,30 @@ fun RegisterPaymentScreen(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = PrimaryGreen)
             )
         },
-        containerColor = AppBackground
+        containerColor = AppBackground,
+        bottomBar = {
+            Button(
+                onClick = {
+                    if (debtId != null) {
+                        expensesViewModel.registerPayment(
+                            context = context,
+                            debtId = debtId,
+                            amount = amount.toDoubleOrNull() ?: 0.0,
+                            method = selectedMethod
+                        )
+                        navController.popBackStack()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+            ) {
+                Text("Confirm Payment", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -134,7 +158,6 @@ fun RegisterPaymentScreen(
                             focusedBorderColor = PrimaryGreen
                         )
                     )
-                    // Transparent overlay to detect clicks
                     Box(
                         modifier = Modifier
                             .matchParentSize()

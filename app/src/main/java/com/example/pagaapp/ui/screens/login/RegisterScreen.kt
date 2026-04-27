@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +24,7 @@ import com.example.pagaapp.navigation.Routes
 import com.example.pagaapp.ui.theme.PrimaryGreen
 
 @Composable
-fun LoginScreen(
+fun RegisterScreen(
     navController: NavController,
     viewModel: AuthViewModel = viewModel()
 ) {
@@ -48,38 +49,41 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo
-            Surface(
-                modifier = Modifier.size(80.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = Color.White
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "$",
-                        fontSize = 40.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryGreen
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             Text(
-                text = "PAGAPP",
+                text = "Create Account",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
                 color = Color.White
             )
 
             Text(
-                text = "Manage shared expenses with friends",
+                text = "Join PAGAPP and start sharing",
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.8f)
             )
 
             Spacer(modifier = Modifier.height(48.dp))
+
+            // Name Field
+            TextField(
+                value = uiState.name,
+                onValueChange = { viewModel.onNameChange(it) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Full Name", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray) },
+                isError = uiState.nameError != null,
+                supportingText = { uiState.nameError?.let { Text(it) } },
+                shape = RoundedCornerShape(12.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    errorContainerColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Email Field
             TextField(
@@ -122,20 +126,34 @@ fun LoginScreen(
                 )
             )
 
-            if (uiState.errorMessage != null) {
-                Text(
-                    text = uiState.errorMessage!!,
-                    color = Color.Red,
-                    modifier = Modifier.padding(top = 8.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Confirm Password Field
+            TextField(
+                value = uiState.confirmPassword,
+                onValueChange = { viewModel.onConfirmPasswordChange(it) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Confirm Password", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray) },
+                visualTransformation = PasswordVisualTransformation(),
+                isError = uiState.confirmPasswordError != null,
+                supportingText = { uiState.confirmPasswordError?.let { Text(it) } },
+                shape = RoundedCornerShape(12.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    errorContainerColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
                 )
-            }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Login Button
+            // Register Button
             Button(
                 onClick = { 
-                    viewModel.login {
+                    viewModel.register {
                         navController.navigate(Routes.Home.route) {
                             popUpTo(Routes.Login.route) { inclusive = true }
                         }
@@ -152,7 +170,7 @@ fun LoginScreen(
                     CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(24.dp))
                 } else {
                     Text(
-                        text = "Login",
+                        text = "Register",
                         color = PrimaryGreen,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
@@ -163,12 +181,12 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Don't have an account? Register",
+                text = "Already have an account? Login",
                 color = Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.clickable {
-                    navController.navigate(Routes.Register.route)
+                    navController.popBackStack()
                 }
             )
         }

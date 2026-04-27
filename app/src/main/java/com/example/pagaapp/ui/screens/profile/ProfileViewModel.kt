@@ -7,6 +7,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.lifecycle.ViewModel
+import com.example.pagaapp.ui.screens.login.AuthViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,11 +22,17 @@ class ProfileViewModel : ViewModel() {
     }
 
     private fun loadProfile() {
+        val currentUser = AuthViewModel.currentUser
+        
+        val profileName = currentUser?.name ?: "Carlos Rodriguez"
+        val profileEmail = currentUser?.email ?: "carlos.rodriguez@email.com"
+        val profileInitials = currentUser?.initials ?: "CR"
+
         _uiState.value = ProfileUiState(
             profile = ProfileModel(
-                name = "Carlos Rodriguez",
-                email = "carlos.rodriguez@email.com",
-                initials = "CR",
+                name = profileName,
+                email = profileEmail,
+                initials = profileInitials,
                 memberSince = "January 2026",
                 totalTransactions = 47,
                 activeFriends = 12,

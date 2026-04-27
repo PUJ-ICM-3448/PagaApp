@@ -1,5 +1,6 @@
 package com.example.pagaapp.ui.screens.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ProfileSettingsSection(profile: ProfileModel) {
+fun ProfileSettingsSection(
+    profile: ProfileModel,
+    onLogout: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -46,7 +50,9 @@ fun ProfileSettingsSection(profile: ProfileModel) {
         Spacer(modifier = Modifier.height(18.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onLogout() },
             shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFDECEC)),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
