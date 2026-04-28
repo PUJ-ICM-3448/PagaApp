@@ -70,12 +70,14 @@ fun AppNavigation() {
                 HistoryScreen(navController)
             }
 
+            // Redirigimos la ruta Location a TrackingScreen para que el usuario vea los cambios realizados
+            // ya que el BottomBar usa Routes.Location.route
             composable(Routes.Location.route) {
-                LocationScreen(navController)
+                TrackingScreen()
             }
 
             composable(Routes.Tracking.route) {
-                TrackingScreen() // Fixed: Removed navController argument
+                TrackingScreen()
             }
 
             composable(Routes.Profile.route) {

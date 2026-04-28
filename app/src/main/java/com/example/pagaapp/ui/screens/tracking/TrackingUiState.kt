@@ -3,20 +3,24 @@ package com.example.pagaapp.ui.screens.tracking
 import com.google.android.gms.maps.model.LatLng
 
 data class TrackingUiState(
-    val userLocation: LatLng = LatLng(4.6097, -74.0817), // Bogotá por defecto
+    val userLocation: LatLng? = null,
     val nearbyPlaces: List<NearbyPlace> = emptyList(),
     val selectedPlace: NearbyPlace? = null,
-    val isLoading: Boolean = false
+    val routePoints: List<LatLng> = emptyList(),
+    val isLoading: Boolean = false,
+    val isCalculatingRoute: Boolean = false,
+    val errorMessage: String? = null
 )
 
 data class NearbyPlace(
     val id: String,
     val name: String,
     val type: PlaceType,
+    val address: String,
     val location: LatLng,
     val distanceText: String = ""
 )
 
 enum class PlaceType {
-    ATM, CORRESPONDENT
+    ATM, CORRESPONDENT, STORE, PARTNER
 }

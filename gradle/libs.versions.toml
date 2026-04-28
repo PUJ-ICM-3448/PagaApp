@@ -11,6 +11,8 @@ composeBom = "2024.10.00"
 googleMaps = "19.0.0"
 playServicesLocation = "21.3.0"
 mapsCompose = "6.1.2"
+retrofit = "2.9.0"
+mapsUtils = "3.8.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +33,9 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "googleMaps" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+maps-utils = { group = "com.google.maps.android", name = "android-maps-utils", version.ref = "mapsUtils" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -54,6 +54,11 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
     implementation(libs.maps.compose)
+    implementation(libs.maps.utils)
+
+    // Networking
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
 
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
