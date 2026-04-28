@@ -28,9 +28,8 @@ import com.example.pagaapp.ui.theme.*
 fun RegisterPaymentScreen(
     navController: NavController,
     debtId: String?,
-    expensesViewModel: ExpensesViewModel = viewModel() // Reuse to get data, or create a specific one
+    expensesViewModel: ExpensesViewModel = viewModel()
 ) {
-    // Find the debt details from the main ViewModel (sharing for simplicity in this example)
     val uiState by expensesViewModel.uiState.collectAsState()
     val debt = uiState.youOweList.find { it.id == debtId } ?: uiState.owedToYouList.find { it.id == debtId }
 
@@ -62,7 +61,6 @@ fun RegisterPaymentScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Debt Details Card
             if (debt != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -98,7 +96,6 @@ fun RegisterPaymentScreen(
                 }
             }
 
-            // Payment Amount
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Payment Amount", fontWeight = FontWeight.Bold, color = TextPrimary)
                 OutlinedTextField(
@@ -106,8 +103,9 @@ fun RegisterPaymentScreen(
                     onValueChange = { amount = it },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        containerColor = Color.White,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
                         unfocusedBorderColor = Color.Transparent,
                         focusedBorderColor = PrimaryGreen
                     ),
@@ -115,7 +113,6 @@ fun RegisterPaymentScreen(
                 )
             }
 
-            // Payment Method
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Payment Method", fontWeight = FontWeight.Bold, color = TextPrimary)
                 Box {
@@ -128,13 +125,13 @@ fun RegisterPaymentScreen(
                         trailingIcon = {
                             Icon(Icons.Default.KeyboardArrowDown, "contentDescription")
                         },
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
-                            containerColor = Color.White,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
                             unfocusedBorderColor = Color.Transparent,
                             focusedBorderColor = PrimaryGreen
                         )
                     )
-                    // Transparent overlay to detect clicks
                     Box(
                         modifier = Modifier
                             .matchParentSize()
@@ -158,7 +155,6 @@ fun RegisterPaymentScreen(
                 }
             }
 
-            // Upload Payment Proof
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Upload Payment Proof", fontWeight = FontWeight.Bold, color = TextPrimary)
                 Box(
