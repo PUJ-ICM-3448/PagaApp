@@ -55,6 +55,11 @@ fun ProfileScreen(
                             popUpTo(0) { inclusive = true }
                         }
                     }
+                },
+                onSettingClick = { route ->
+                    if (route != null) {
+                        navController.navigate(route)
+                    }
                 }
             )
         }

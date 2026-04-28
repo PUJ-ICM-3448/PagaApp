@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -70,7 +71,7 @@ fun ExpensesScreen(
             // You Owe Section
             item {
                 SectionHeader(
-                    title = "You Owe (${uiState.youOweList.size})",
+                    title = "You Owe (${uiState.youOweList.count { it.status == DebtStatus.PENDING }})",
                     amount = uiState.totalYouOwe,
                     isExpense = true
                 )
@@ -79,7 +80,7 @@ fun ExpensesScreen(
             items(uiState.youOweList) { debt ->
                 DebtCard(
                     debt = debt, 
-                    showAction = true,
+                    showAction = debt.status == DebtStatus.PENDING,
                     onActionClick = {
                         navController.navigate(Routes.RegisterPayment.createRoute(debt.id))
                     }
@@ -91,7 +92,7 @@ fun ExpensesScreen(
             // Owed To You Section
             item {
                 SectionHeader(
-                    title = "Owed to You (${uiState.owedToYouList.size})",
+                    title = "Owed to You (${uiState.owedToYouList.count { it.status == DebtStatus.PENDING }})",
                     amount = uiState.totalOwedToYou,
                     isExpense = false
                 )
@@ -219,6 +220,20 @@ fun DebtCard(debt: DebtItem, showAction: Boolean = false, onActionClick: () -> U
                     Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Register Payment", fontWeight = FontWeight.Bold)
+                }
+            } else if (debt.status == DebtStatus.PAID) {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = { /* Could show details or proof */ },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false,
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF059669).copy(alpha = 0.5f))
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF059669))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Payment Completed", fontWeight = FontWeight.Bold, color = Color(0xFF059669))
                 }
             }
         }

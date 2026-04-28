@@ -16,5 +16,6 @@ data class ProfileModel(
 
 data class ProfileSettingModel(
     val title: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val route: String? = null
 )

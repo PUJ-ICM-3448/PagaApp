@@ -7,10 +7,15 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.pagaapp.navigation.Routes
+import com.example.pagaapp.ui.screens.expenses.ExpensesViewModel
+import com.example.pagaapp.ui.screens.history.TransactionType
 import com.example.pagaapp.ui.screens.login.AuthViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class ProfileViewModel : ViewModel() {
 
@@ -18,15 +23,25 @@ class ProfileViewModel : ViewModel() {
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
-        loadProfile()
+        viewModelScope.launch {
+            // Conectamos las estadísticas con los datos reales de las transacciones
+            ExpensesViewModel.historyTransactions.collect { transactions ->
+                updateProfileData(transactions)
+            }
+        }
     }
 
-    private fun loadProfile() {
+    private fun updateProfileData(transactions: List<com.example.pagaapp.ui.screens.history.HistoryModel>) {
         val currentUser = AuthViewModel.currentUser
         
         val profileName = currentUser?.name ?: "Carlos Rodriguez"
         val profileEmail = currentUser?.email ?: "carlos.rodriguez@email.com"
         val profileInitials = currentUser?.initials ?: "CR"
+
+        // Estadísticas reales basadas en el historial
+        val expensesCount = transactions.count { it.type == TransactionType.EXPENSE }
+        val totalSharedAmount = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { kotlin.math.abs(it.amount) }.toInt()
+        val activeFriendsCount = 12 // Esto se podría conectar a un FriendsViewModel en el futuro
 
         _uiState.value = ProfileUiState(
             profile = ProfileModel(
@@ -34,30 +49,35 @@ class ProfileViewModel : ViewModel() {
                 email = profileEmail,
                 initials = profileInitials,
                 memberSince = "January 2026",
-                totalTransactions = 47,
-                activeFriends = 12,
-                totalShared = 847,
-                expenses = 32,
+                totalTransactions = transactions.size,
+                activeFriends = activeFriendsCount,
+                totalShared = totalSharedAmount,
+                expenses = expensesCount,
                 settings = listOf(
                     ProfileSettingModel(
                         title = "Payment Methods",
-                        icon = Icons.Outlined.CreditCard
+                        icon = Icons.Outlined.CreditCard,
+                        route = Routes.PaymentMethods.route
                     ),
                     ProfileSettingModel(
                         title = "Location Preferences",
-                        icon = Icons.Outlined.LocationOn
+                        icon = Icons.Outlined.LocationOn,
+                        route = Routes.Location.route
                     ),
                     ProfileSettingModel(
                         title = "Security and Verification",
-                        icon = Icons.Outlined.Shield
+                        icon = Icons.Outlined.Shield,
+                        route = Routes.Security.route
                     ),
                     ProfileSettingModel(
                         title = "Help & Support",
-                        icon = Icons.Outlined.HelpOutline
+                        icon = Icons.Outlined.HelpOutline,
+                        route = Routes.HelpSupport.route
                     ),
                     ProfileSettingModel(
                         title = "App Settings",
-                        icon = Icons.Outlined.Settings
+                        icon = Icons.Outlined.Settings,
+                        route = Routes.AppSettings.route
                     )
                 )
             )

@@ -26,7 +26,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ProfileSettingsSection(
     profile: ProfileModel,
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    onSettingClick: (String?) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -43,7 +44,10 @@ fun ProfileSettingsSection(
         Spacer(modifier = Modifier.height(16.dp))
 
         profile.settings.forEach { item ->
-            ProfileSettingItem(item)
+            ProfileSettingItem(
+                item = item,
+                onClick = { onSettingClick(item.route) }
+            )
             Spacer(modifier = Modifier.height(14.dp))
         }
 

@@ -1,21 +1,23 @@
 package com.example.pagaapp.ui.screens.expenses
 
-import android.app.NotificationManager
 import android.content.Context
 import androidx.compose.ui.graphics.Color
-import androidx.core.app.NotificationCompat
 import androidx.lifecycle.ViewModel
 import com.example.pagaapp.ui.screens.history.HistoryModel
 import com.example.pagaapp.ui.screens.history.TransactionType
+import com.example.pagaapp.utils.NotificationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ExpensesViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(ExpensesUiState(
-        youOweList = listOf(
+    
+    // Singleton-like approach for debts state so it's shared between screens
+    companion object {
+        private val initialYouOwe = listOf(
             DebtItem(
                 id = "1",
                 name = "Maria Garcia",
@@ -56,8 +58,9 @@ class ExpensesViewModel : ViewModel() {
                 initials = "EG",
                 avatarColor = Color(0xFFF59E0B)
             )
-        ),
-        owedToYouList = listOf(
+        )
+
+        private val initialOwedToYou = listOf(
             DebtItem(
                 id = "3",
                 name = "Juan Lopez",
@@ -89,31 +92,42 @@ class ExpensesViewModel : ViewModel() {
                 avatarColor = Color(0xFFEC4899)
             )
         )
-    ))
-    val uiState: StateFlow<ExpensesUiState> = _uiState.asStateFlow()
 
-    // Singleton-like approach for history demo (in a real app use a Repository/DB)
-    companion object {
+        val debtsState = MutableStateFlow(ExpensesUiState(initialYouOwe, initialOwedToYou))
         val historyTransactions = MutableStateFlow<List<HistoryModel>>(emptyList())
     }
 
-    fun registerPayment(context: Context, debtId: String, amount: Double, method: String) {
-        val debt = _uiState.value.youOweList.find { it.id == debtId }
-            ?: _uiState.value.owedToYouList.find { it.id == debtId }
+    private val _uiState = debtsState
+    val uiState: StateFlow<ExpensesUiState> = _uiState.asStateFlow()
+
+    fun registerPayment(context: Context, debtId: String, amount: Double, method: String, imageUri: String? = null) {
+        val currentState = _uiState.value
+        val debt = currentState.youOweList.find { it.id == debtId }
+            ?: currentState.owedToYouList.find { it.id == debtId }
 
         debt?.let {
-            // Update UI state locally (simulated)
-            val updatedYouOweList = _uiState.value.youOweList.map { item ->
-                if (item.id == debtId) item.copy(status = DebtStatus.PAID) else item
+            if (amount <= 0) {
+                NotificationHelper.showNotification(
+                    context, 
+                    "Payment Failed", 
+                    "Invalid amount for payment to ${it.name}."
+                )
+                return
             }
-            val updatedOwedToYouList = _uiState.value.owedToYouList.map { item ->
-                if (item.id == debtId) item.copy(status = DebtStatus.PAID) else item
+
+            // Update UI state locally
+            debtsState.update { state ->
+                val updatedYouOweList = state.youOweList.map { item ->
+                    if (item.id == debtId) item.copy(status = DebtStatus.PAID) else item
+                }
+                val updatedOwedToYouList = state.owedToYouList.map { item ->
+                    if (item.id == debtId) item.copy(status = DebtStatus.PAID) else item
+                }
+                state.copy(
+                    youOweList = updatedYouOweList,
+                    owedToYouList = updatedOwedToYouList
+                )
             }
-            
-            _uiState.value = _uiState.value.copy(
-                youOweList = updatedYouOweList,
-                owedToYouList = updatedOwedToYouList
-            )
             
             // Add to history
             val sdf = SimpleDateFormat("MMMM d, yyyy • HH:mm", Locale.getDefault())
@@ -124,26 +138,24 @@ class ExpensesViewModel : ViewModel() {
                 category = "Payment",
                 date = currentDate,
                 amount = -amount,
-                type = TransactionType.EXPENSE
+                type = TransactionType.EXPENSE,
+                imageUri = imageUri
             )
             
             historyTransactions.value = listOf(newTransaction) + historyTransactions.value
             
-            // 1. Notify user
-            showNotification(context, "Payment Registered", "You registered a payment of $${String.format("%.2f", amount)} to ${it.name} via $method")
+            // Notify user
+            NotificationHelper.showNotification(
+                context, 
+                "Payment Successful", 
+                "You paid $${String.format("%.2f", amount)} to ${it.name} via $method"
+            )
+        } ?: run {
+            NotificationHelper.showNotification(
+                context, 
+                "Error", 
+                "Could not find the debt information."
+            )
         }
-    }
-
-    private fun showNotification(context: Context, title: String, message: String) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notification = NotificationCompat.Builder(context, "payments_channel")
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 }

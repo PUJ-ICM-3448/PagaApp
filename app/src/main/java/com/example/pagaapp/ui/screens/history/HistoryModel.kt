@@ -10,5 +10,6 @@ data class HistoryModel(
     val category: String,
     val date: String,
     val amount: Double,
-    val type: TransactionType
+    val type: TransactionType,
+    val imageUri: String? = null
 )
