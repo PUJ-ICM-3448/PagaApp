@@ -1,5 +1,6 @@
 package com.example.pagaapp.ui.screens.expenses
 
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,7 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,10 +27,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.pagaapp.ui.theme.*
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,11 +52,29 @@ fun RegisterPaymentScreen(
     var selectedMethod by remember { mutableStateOf("Bank Transfer") }
     var expanded by remember { mutableStateOf(false) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        selectedImageUri = uri
+        if (uri != null) {
+            selectedImageUri = uri
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            selectedImageUri = tempPhotoUri
+        }
+    }
+
+    fun createImageFile(context: Context): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+        return File.createTempFile("PAYMENT_${timeStamp}_", ".jpg", storageDir)
     }
 
     val methods = listOf("Bank Transfer", "Cash", "Credit Card", "Digital Wallet")
@@ -205,7 +231,7 @@ fun RegisterPaymentScreen(
                         .height(200.dp)
                         .background(Color.White, RoundedCornerShape(12.dp))
                         .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        .clickable { galleryLauncher.launch("image/*") },
+                        .clickable { showImageSourceDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
                     if (selectedImageUri == null) {
@@ -223,7 +249,7 @@ fun RegisterPaymentScreen(
                                 fontSize = 14.sp
                             )
                             Text(
-                                "Tap to open Gallery",
+                                "Tap to select source",
                                 color = Color.Gray,
                                 fontSize = 12.sp
                             )
@@ -238,6 +264,49 @@ fun RegisterPaymentScreen(
                     }
                 }
             }
+        }
+
+        if (showImageSourceDialog) {
+            AlertDialog(
+                onDismissRequest = { showImageSourceDialog = false },
+                title = { Text("Select Image Source") },
+                text = { Text("Choose how you want to upload your payment proof.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showImageSourceDialog = false
+                            galleryLauncher.launch("image/*")
+                        }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Gallery")
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showImageSourceDialog = false
+                            val photoFile = createImageFile(context)
+                            val uri = FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.fileprovider",
+                                photoFile
+                            )
+                            tempPhotoUri = uri
+                            cameraLauncher.launch(uri)
+                        }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Camera")
+                        }
+                    }
+                }
+            )
         }
     }
 }
