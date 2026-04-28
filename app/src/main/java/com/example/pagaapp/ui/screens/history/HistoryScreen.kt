@@ -28,14 +28,21 @@ fun HistoryScreen(
             .fillMaxSize()
             .background(Color(0xFFF3F4F6))
     ) {
-        HistoryHeader()
+        // Now functional with totals and filtering
+        HistoryHeader(
+            totalIncome = uiState.totalIncome,
+            totalExpense = uiState.totalExpense,
+            selectedFilter = uiState.selectedFilter,
+            onFilterSelected = { viewModel.onFilterSelected(it) }
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
-            items(uiState.transactions) { item ->
+            // Use the filtered list based on the user's selection
+            items(uiState.filteredTransactions) { item ->
                 HistoryItem(item)
             }
         }

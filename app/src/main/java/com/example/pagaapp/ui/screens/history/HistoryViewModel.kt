@@ -48,10 +48,32 @@ class HistoryViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             ExpensesViewModel.historyTransactions.collect { newTransactions ->
-                _uiState.update { it.copy(
-                    transactions = newTransactions + initialTransactions
-                ) }
+                val allTransactions = newTransactions + initialTransactions
+                updateTransactions(allTransactions, _uiState.value.selectedFilter)
             }
         }
+    }
+
+    fun onFilterSelected(filter: String) {
+        updateTransactions(_uiState.value.transactions, filter)
+    }
+
+    private fun updateTransactions(allTransactions: List<HistoryModel>, filter: String) {
+        val filtered = when (filter) {
+            "Income" -> allTransactions.filter { it.type == TransactionType.INCOME }
+            "Expense" -> allTransactions.filter { it.type == TransactionType.EXPENSE }
+            else -> allTransactions
+        }
+
+        val income = allTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+        val expense = allTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { kotlin.math.abs(it.amount) }
+
+        _uiState.update { it.copy(
+            transactions = allTransactions,
+            filteredTransactions = filtered,
+            selectedFilter = filter,
+            totalIncome = income,
+            totalExpense = expense
+        ) }
     }
 }

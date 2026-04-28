@@ -97,7 +97,7 @@ class ExpensesViewModel : ViewModel() {
         val historyTransactions = MutableStateFlow<List<HistoryModel>>(emptyList())
     }
 
-    fun registerPayment(context: Context, debtId: String, amount: Double, method: String) {
+    fun registerPayment(context: Context, debtId: String, amount: Double, method: String, imageUri: String? = null) {
         val debt = _uiState.value.youOweList.find { it.id == debtId }
             ?: _uiState.value.owedToYouList.find { it.id == debtId }
 
@@ -124,7 +124,8 @@ class ExpensesViewModel : ViewModel() {
                 category = "Payment",
                 date = currentDate,
                 amount = -amount,
-                type = TransactionType.EXPENSE
+                type = TransactionType.EXPENSE,
+                imageUri = imageUri
             )
             
             historyTransactions.value = listOf(newTransaction) + historyTransactions.value

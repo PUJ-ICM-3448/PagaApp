@@ -21,6 +21,7 @@ data class ExpensesUiState(
     val youOweList: List<DebtItem> = emptyList(),
     val owedToYouList: List<DebtItem> = emptyList()
 ) {
-    val totalYouOwe: Double = youOweList.sumOf { it.amount }
-    val totalOwedToYou: Double = owedToYouList.sumOf { it.amount }
+    // Solo sumamos lo que está pendiente para que el total sea real
+    val totalYouOwe: Double = youOweList.filter { it.status == DebtStatus.PENDING }.sumOf { it.amount }
+    val totalOwedToYou: Double = owedToYouList.filter { it.status == DebtStatus.PENDING }.sumOf { it.amount }
 }

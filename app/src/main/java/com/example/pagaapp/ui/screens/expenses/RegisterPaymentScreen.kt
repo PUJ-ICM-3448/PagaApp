@@ -1,5 +1,8 @@
 package com.example.pagaapp.ui.screens.expenses
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,11 +19,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.pagaapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,15 +34,22 @@ import com.example.pagaapp.ui.theme.*
 fun RegisterPaymentScreen(
     navController: NavController,
     debtId: String?,
-    expensesViewModel: ExpensesViewModel = viewModel() // Reuse to get data, or create a specific one
+    expensesViewModel: ExpensesViewModel = viewModel()
 ) {
-    // Find the debt details from the main ViewModel (sharing for simplicity in this example)
+    val context = LocalContext.current
     val uiState by expensesViewModel.uiState.collectAsState()
     val debt = uiState.youOweList.find { it.id == debtId } ?: uiState.owedToYouList.find { it.id == debtId }
 
     var amount by remember { mutableStateOf(debt?.amount?.toString() ?: "") }
     var selectedMethod by remember { mutableStateOf("Bank Transfer") }
     var expanded by remember { mutableStateOf(false) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
+    }
 
     val methods = listOf("Bank Transfer", "Cash", "Credit Card", "Digital Wallet")
 
@@ -52,7 +65,31 @@ fun RegisterPaymentScreen(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = PrimaryGreen)
             )
         },
-        containerColor = AppBackground
+        containerColor = AppBackground,
+        bottomBar = {
+            Button(
+                onClick = {
+                    if (debtId != null && amount.isNotEmpty()) {
+                        expensesViewModel.registerPayment(
+                            context = context,
+                            debtId = debtId,
+                            amount = amount.toDoubleOrNull() ?: 0.0,
+                            method = selectedMethod,
+                            imageUri = selectedImageUri?.toString()
+                        )
+                        navController.popBackStack()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+            ) {
+                Text("Confirm Payment", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -106,10 +143,11 @@ fun RegisterPaymentScreen(
                     onValueChange = { amount = it },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        containerColor = Color.White,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = PrimaryGreen
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedIndicatorColor = PrimaryGreen,
+                        unfocusedIndicatorColor = Color.Transparent
                     ),
                     placeholder = { Text("0,00") }
                 )
@@ -128,13 +166,13 @@ fun RegisterPaymentScreen(
                         trailingIcon = {
                             Icon(Icons.Default.KeyboardArrowDown, "contentDescription")
                         },
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
-                            containerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = PrimaryGreen
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedIndicatorColor = PrimaryGreen,
+                            unfocusedIndicatorColor = Color.Transparent
                         )
                     )
-                    // Transparent overlay to detect clicks
                     Box(
                         modifier = Modifier
                             .matchParentSize()
@@ -166,26 +204,36 @@ fun RegisterPaymentScreen(
                         .fillMaxWidth()
                         .height(200.dp)
                         .background(Color.White, RoundedCornerShape(12.dp))
-                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .clickable { galleryLauncher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Outlined.FileUpload,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Upload screenshot or receipt",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            "Camera or Gallery",
-                            color = Color.Gray,
-                            fontSize = 12.sp
+                    if (selectedImageUri == null) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Outlined.FileUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Upload screenshot or receipt",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                "Tap to open Gallery",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = selectedImageUri,
+                            contentDescription = "Payment Proof",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }
