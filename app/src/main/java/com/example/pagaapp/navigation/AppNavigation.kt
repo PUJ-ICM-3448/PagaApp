@@ -20,6 +20,7 @@ import com.example.pagaapp.ui.screens.login.LoginScreen
 import com.example.pagaapp.ui.screens.login.RegisterScreen
 import com.example.pagaapp.ui.screens.profile.ProfileScreen
 import com.example.pagaapp.ui.screens.tracking.TrackingScreen
+import com.example.pagaapp.ui.screens.settings.*
 
 @Composable
 fun AppNavigation() {
@@ -28,11 +29,17 @@ fun AppNavigation() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val authRoutes = listOf(Routes.Login.route, Routes.Register.route)
+    val settingsRoutes = listOf(
+        Routes.PaymentMethods.route,
+        Routes.Security.route,
+        Routes.HelpSupport.route,
+        Routes.AppSettings.route
+    )
 
     Scaffold(
         bottomBar = {
-            // Only show bottom bar if we are NOT in an auth screen
-            if (currentRoute !in authRoutes) {
+            // No mostrar barra si es login, registro o sub-pantallas de configuración (opcional)
+            if (currentRoute !in authRoutes && currentRoute !in settingsRoutes) {
                 AppBottomBar(navController)
             }
         }
@@ -42,22 +49,10 @@ fun AppNavigation() {
             startDestination = Routes.Login.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Routes.Login.route) {
-                LoginScreen(navController)
-            }
-
-            composable(Routes.Register.route) {
-                RegisterScreen(navController)
-            }
-
-            composable(Routes.Home.route) {
-                HomeScreen(navController)
-            }
-
-            composable(Routes.Expenses.route) {
-                ExpensesScreen(navController)
-            }
-
+            composable(Routes.Login.route) { LoginScreen(navController) }
+            composable(Routes.Register.route) { RegisterScreen(navController) }
+            composable(Routes.Home.route) { HomeScreen(navController) }
+            composable(Routes.Expenses.route) { ExpensesScreen(navController) }
             composable(
                 route = Routes.RegisterPayment.route,
                 arguments = listOf(navArgument("debtId") { type = NavType.StringType })
@@ -65,22 +60,16 @@ fun AppNavigation() {
                 val debtId = backStackEntry.arguments?.getString("debtId")
                 RegisterPaymentScreen(navController, debtId)
             }
+            composable(Routes.History.route) { HistoryScreen(navController) }
+            composable(Routes.Location.route) { LocationScreen(navController) }
+            composable(Routes.Tracking.route) { TrackingScreen() }
+            composable(Routes.Profile.route) { ProfileScreen(navController) }
 
-            composable(Routes.History.route) {
-                HistoryScreen(navController)
-            }
-
-            composable(Routes.Location.route) {
-                LocationScreen(navController)
-            }
-
-            composable(Routes.Tracking.route) {
-                TrackingScreen() // Fixed: Removed navController argument
-            }
-
-            composable(Routes.Profile.route) {
-                ProfileScreen(navController)
-            }
+            // Rutas de Configuración
+            composable(Routes.PaymentMethods.route) { PaymentMethodsScreen(navController) }
+            composable(Routes.Security.route) { SecurityScreen(navController) }
+            composable(Routes.HelpSupport.route) { HelpSupportScreen(navController) }
+            composable(Routes.AppSettings.route) { AppSettingsScreen(navController) }
         }
     }
 }

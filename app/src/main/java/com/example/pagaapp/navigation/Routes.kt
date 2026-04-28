@@ -14,4 +14,10 @@ sealed class Routes(val route: String) {
         fun createRoute(debtId: String) = "register_payment/$debtId"
     }
 
+    // Settings Routes
+    object PaymentMethods : Routes("payment_methods")
+    object Security : Routes("security")
+    object HelpSupport : Routes("help_support")
+    object AppSettings : Routes("app_settings")
+
 }
