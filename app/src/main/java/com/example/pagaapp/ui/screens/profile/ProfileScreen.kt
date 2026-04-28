@@ -13,13 +13,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.pagaapp.navigation.Routes
+import com.example.pagaapp.ui.screens.login.AuthViewModel
 
 @Composable
 fun ProfileScreen(
     navController: NavHostController,
-    viewModel: ProfileViewModel = viewModel()
+    profileViewModel: ProfileViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by profileViewModel.uiState.collectAsState()
     val profile = uiState.profile ?: return
 
     LazyColumn(
@@ -44,7 +47,16 @@ fun ProfileScreen(
         }
 
         item {
-            ProfileSettingsSection(profile)
+            ProfileSettingsSection(
+                profile = profile,
+                onLogout = {
+                    authViewModel.logout {
+                        navController.navigate(Routes.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            )
         }
 
         item {

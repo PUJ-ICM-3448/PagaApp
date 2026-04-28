@@ -17,6 +17,7 @@ import com.example.pagaapp.ui.screens.history.HistoryScreen
 import com.example.pagaapp.ui.screens.home.HomeScreen
 import com.example.pagaapp.ui.screens.location.LocationScreen
 import com.example.pagaapp.ui.screens.login.LoginScreen
+import com.example.pagaapp.ui.screens.login.RegisterScreen
 import com.example.pagaapp.ui.screens.profile.ProfileScreen
 import com.example.pagaapp.ui.screens.tracking.TrackingScreen
 
@@ -26,10 +27,12 @@ fun AppNavigation() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val authRoutes = listOf(Routes.Login.route, Routes.Register.route)
+
     Scaffold(
         bottomBar = {
-            // Only show bottom bar if we are NOT in the Login screen
-            if (currentRoute != Routes.Login.route) {
+            // Only show bottom bar if we are NOT in an auth screen
+            if (currentRoute !in authRoutes) {
                 AppBottomBar(navController)
             }
         }
@@ -41,6 +44,10 @@ fun AppNavigation() {
         ) {
             composable(Routes.Login.route) {
                 LoginScreen(navController)
+            }
+
+            composable(Routes.Register.route) {
+                RegisterScreen(navController)
             }
 
             composable(Routes.Home.route) {
