@@ -20,10 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.pagaapp.utils.NotificationHelper
 
 // --- MODELOS ---
 data class PaymentCard(val id: String, val lastFour: String, val type: String)
@@ -84,6 +86,7 @@ fun SettingRow(title: String, subtitle: String, icon: ImageVector, onClick: () -
 // --- PANTALLA: MÉTODOS DE PAGO ---
 @Composable
 fun PaymentMethodsScreen(navController: NavHostController) {
+    val context = LocalContext.current
     var cards by remember { mutableStateOf(listOf(PaymentCard("1", "4242", "Visa"))) }
     var showDialog by remember { mutableStateOf(false) }
     var newCardNumber by remember { mutableStateOf("") }
@@ -119,10 +122,16 @@ fun PaymentMethodsScreen(navController: NavHostController) {
                 confirmButton = {
                     TextButton(onClick = {
                         if (newCardNumber.length >= 4) {
+                            val lastFour = newCardNumber.takeLast(4)
                             cards = cards + PaymentCard(
                                 id = (cards.size + 1).toString(),
-                                lastFour = newCardNumber.takeLast(4),
+                                lastFour = lastFour,
                                 type = "Visa"
+                            )
+                            NotificationHelper.showNotification(
+                                context,
+                                "Card Added",
+                                "Your card ending in $lastFour has been successfully linked."
                             )
                             newCardNumber = ""
                             showDialog = false
@@ -197,6 +206,7 @@ fun FAQInterface(onBack: () -> Unit) {
 
 @Composable
 fun ReportInterface(onBack: () -> Unit) {
+    val context = LocalContext.current
     var reportText by remember { mutableStateOf("") }
     var isSent by remember { mutableStateOf(false) }
 
@@ -225,7 +235,16 @@ fun ReportInterface(onBack: () -> Unit) {
                     placeholder = { Text("Ej: No puedo vincular mi tarjeta Visa...") }
                 )
                 Button(
-                    onClick = { if (reportText.isNotBlank()) isSent = true },
+                    onClick = { 
+                        if (reportText.isNotBlank()) {
+                            isSent = true
+                            NotificationHelper.showNotification(
+                                context,
+                                "Support Request",
+                                "We've received your report. A support agent will contact you soon."
+                            )
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) { Text("Enviar Reporte") }
@@ -236,6 +255,7 @@ fun ReportInterface(onBack: () -> Unit) {
 
 @Composable
 fun ChatInterface(onBack: () -> Unit) {
+    val context = LocalContext.current
     var messageText by remember { mutableStateOf("") }
     var messages by remember { mutableStateOf(listOf(ChatMessage("¡Hola! ¿En qué podemos ayudarte hoy?", false))) }
 
@@ -281,6 +301,12 @@ fun ChatInterface(onBack: () -> Unit) {
                     if (messageText.isNotBlank()) {
                         messages = messages + ChatMessage(messageText, true)
                         messageText = ""
+                        // Simulating a response notification
+                        NotificationHelper.showNotification(
+                            context,
+                            "Support Chat",
+                            "Agent: Recibido. Un agente se conectará pronto."
+                        )
                         messages = messages + ChatMessage("Recibido. Un agente se conectará pronto.", false)
                     }
                 }) {
@@ -365,6 +391,7 @@ fun SecurityScreen(navController: NavHostController) {
 
 @Composable
 fun ChangePasswordInterface(onBack: () -> Unit) {
+    val context = LocalContext.current
     var oldPass by remember { mutableStateOf("") }
     var newPass by remember { mutableStateOf("") }
     var confirmPass by remember { mutableStateOf("") }
@@ -407,7 +434,16 @@ fun ChangePasswordInterface(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 )
                 Button(
-                    onClick = { if (newPass == confirmPass && newPass.isNotBlank()) success = true },
+                    onClick = { 
+                        if (newPass == confirmPass && newPass.isNotBlank()) {
+                            success = true
+                            NotificationHelper.showNotification(
+                                context,
+                                "Security Alert",
+                                "Your account password was successfully updated."
+                            )
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
                 ) { Text("Actualizar Contraseña") }

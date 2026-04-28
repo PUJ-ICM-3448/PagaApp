@@ -1,12 +1,11 @@
 package com.example.pagaapp.ui.screens.expenses
 
-import android.app.NotificationManager
 import android.content.Context
 import androidx.compose.ui.graphics.Color
-import androidx.core.app.NotificationCompat
 import androidx.lifecycle.ViewModel
 import com.example.pagaapp.ui.screens.history.HistoryModel
 import com.example.pagaapp.ui.screens.history.TransactionType
+import com.example.pagaapp.utils.NotificationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -102,6 +101,23 @@ class ExpensesViewModel : ViewModel() {
             ?: _uiState.value.owedToYouList.find { it.id == debtId }
 
         debt?.let {
+            if (amount <= 0) {
+                NotificationHelper.showNotification(
+                    context, 
+                    "Payment Failed", 
+                    "Invalid amount for payment to ${it.name}."
+                )
+                return
+            }
+
+            if (amount > it.amount) {
+                NotificationHelper.showNotification(
+                    context, 
+                    "Payment Warning", 
+                    "Amount paid ($$amount) exceeds the debt with ${it.name} ($${it.amount})."
+                )
+            }
+
             // Update UI state locally (simulated)
             val updatedYouOweList = _uiState.value.youOweList.map { item ->
                 if (item.id == debtId) item.copy(status = DebtStatus.PAID) else item
@@ -131,20 +147,17 @@ class ExpensesViewModel : ViewModel() {
             historyTransactions.value = listOf(newTransaction) + historyTransactions.value
             
             // 1. Notify user
-            showNotification(context, "Payment Registered", "You registered a payment of $${String.format("%.2f", amount)} to ${it.name} via $method")
+            NotificationHelper.showNotification(
+                context, 
+                "Payment Successful", 
+                "You paid $${String.format("%.2f", amount)} to ${it.name} via $method"
+            )
+        } ?: run {
+            NotificationHelper.showNotification(
+                context, 
+                "Error", 
+                "Could not find the debt information."
+            )
         }
-    }
-
-    private fun showNotification(context: Context, title: String, message: String) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notification = NotificationCompat.Builder(context, "payments_channel")
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 }
