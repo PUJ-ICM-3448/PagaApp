@@ -75,7 +75,7 @@ fun AppNavigation() {
             }
 
             composable(Routes.Tracking.route) {
-                TrackingScreen(navController)
+                TrackingScreen() // Fixed: Removed navController argument
             }
 
             composable(Routes.Profile.route) {
