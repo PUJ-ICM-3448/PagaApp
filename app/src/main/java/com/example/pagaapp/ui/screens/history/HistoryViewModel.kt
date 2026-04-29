@@ -15,43 +15,30 @@ class HistoryViewModel : ViewModel() {
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
     private val initialTransactions = listOf(
-        HistoryModel(
-            "Payment received",
-            "Payment",
-            "March 9, 2026 • 14:30",
-            28.00,
-            TransactionType.INCOME
-        ),
-        HistoryModel(
-            "Dinner at Italian",
-            "Food & Dining",
-            "March 8, 2026 • 20:15",
-            -45.50,
-            TransactionType.EXPENSE
-        ),
-        HistoryModel(
-            "Payment sent to Sofia",
-            "Payment",
-            "March 7, 2026 • 11:00",
-            -15.75,
-            TransactionType.EXPENSE
-        ),
-        HistoryModel(
-            "Movie tickets",
-            "Entertainment",
-            "March 6, 2026 • 19:00",
-            -28.00,
-            TransactionType.EXPENSE
-        )
+        HistoryModel("Payment received", "Payment", "March 9, 2026 • 14:30", 28.00, TransactionType.INCOME),
+        HistoryModel("Dinner at Italian", "Food & Dining", "March 8, 2026 • 20:15", -45.50, TransactionType.EXPENSE),
+        HistoryModel("Payment sent to Sofia", "Payment", "March 7, 2026 • 11:00", -15.75, TransactionType.EXPENSE)
     )
+
+    // Shared list in memory for the session
+    companion object {
+        private val addedTransactions = MutableStateFlow<List<HistoryModel>>(emptyList())
+    }
 
     init {
         viewModelScope.launch {
-            ExpensesViewModel.historyTransactions.collect { newTransactions ->
-                val allTransactions = newTransactions + initialTransactions
-                updateTransactions(allTransactions, _uiState.value.selectedFilter)
+            // Combine initial + expenses + newly added transactions
+            ExpensesViewModel.historyTransactions.collect { expenses ->
+                addedTransactions.collect { added ->
+                    val all = added + expenses + initialTransactions
+                    updateTransactions(all, _uiState.value.selectedFilter)
+                }
             }
         }
+    }
+
+    fun addTransaction(transaction: HistoryModel) {
+        addedTransactions.update { listOf(transaction) + it }
     }
 
     fun onFilterSelected(filter: String) {

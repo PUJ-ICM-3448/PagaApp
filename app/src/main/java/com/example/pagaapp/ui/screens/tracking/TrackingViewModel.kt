@@ -1,5 +1,6 @@
 package com.example.pagaapp.ui.screens.tracking
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
@@ -16,7 +17,6 @@ import retrofit2.http.Query
 import java.util.Locale
 import kotlin.math.*
 
-// Retrofit interface for Google Directions API
 interface DirectionsService {
     @GET("maps/api/directions/json")
     suspend fun getDirections(
@@ -29,7 +29,8 @@ interface DirectionsService {
 
 data class DirectionsResponse(
     val routes: List<Route>,
-    val status: String
+    val status: String,
+    val error_message: String? = null
 )
 
 data class Route(
@@ -42,6 +43,7 @@ data class PolylineData(
 
 class TrackingViewModel : ViewModel() {
 
+    private val TAG = "TrackingViewModel"
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
 
@@ -53,59 +55,49 @@ class TrackingViewModel : ViewModel() {
             .create(DirectionsService::class.java)
     }
 
-    // Default fallback location (Javeriana, Bogota) as requested
-    private val javerianaLocation = LatLng(4.6280, -74.0649)
+    // Ubicación de demo: Universidad Javeriana, Bogotá
+    private val bogotaFallback = LatLng(4.6280, -74.0649)
 
     fun updateUserLocation(location: LatLng?) {
-        val finalLocation = location ?: javerianaLocation
+        val rawLocation = location ?: bogotaFallback
+        
+        // Lógica de "Ubicación Efectiva": Si está a más de 50km de Bogotá, usar fallback
+        val distanceToBogota = calculateDistance(rawLocation, bogotaFallback)
+        val effectiveLocation = if (distanceToBogota > 50.0) {
+            Log.w(TAG, "Ubicación detectada muy lejos de Bogotá (dist: ${distanceToBogota}km). Usando Fallback Javeriana.")
+            bogotaFallback
+        } else {
+            rawLocation
+        }
+
         val isFirstLocation = _uiState.value.userLocation == null
+        _uiState.update { it.copy(userLocation = effectiveLocation, isLoading = false) }
         
-        _uiState.update { it.copy(userLocation = finalLocation, isLoading = false) }
-        
-        // Cargar cajeros alrededor de la ubicación inicial (real o fallback en Bogotá)
         if (isFirstLocation) {
-            loadNearbyPlaces(finalLocation)
+            loadNearbyPlaces(effectiveLocation)
         }
     }
 
-    private fun loadNearbyPlaces(userLoc: LatLng) {
+    private fun loadNearbyPlaces(effectiveLoc: LatLng) {
         _uiState.update { it.copy(isLoading = true) }
         
-        // Generamos puntos de interés simulados alrededor de la ubicación en Bogotá
+        // Generar cajeros cerca de la ubicación efectiva en Bogotá
         val mockPlaces = listOf(
-            NearbyPlace(
-                "1", "Cajero Bancolombia - Javeriana", PlaceType.ATM,
-                "Calle 40 # 7-30", LatLng(userLoc.latitude + 0.0012, userLoc.longitude + 0.0008)
-            ),
-            NearbyPlace(
-                "2", "Corresponsal Nequi - Calle 45", PlaceType.CORRESPONDENT,
-                "Carrera 13 # 44-10", LatLng(userLoc.latitude - 0.0018, userLoc.longitude + 0.0022)
-            ),
-            NearbyPlace(
-                "3", "ATM Davivienda Galerías", PlaceType.ATM,
-                "Calle 53 # 25-05", LatLng(userLoc.latitude + 0.0035, userLoc.longitude - 0.0045)
-            ),
-            NearbyPlace(
-                "4", "Punto Paga Todo Teusaquillo", PlaceType.PARTNER,
-                "Carrera 19 # 34-12", LatLng(userLoc.latitude - 0.0025, userLoc.longitude - 0.0012)
-            ),
-            NearbyPlace(
-                "5", "Tienda Ara Aliada", PlaceType.STORE,
-                "Calle 45 # 13-45", LatLng(userLoc.latitude + 0.0015, userLoc.longitude - 0.0025)
-            ),
-            NearbyPlace(
-                "6", "Cajero BBVA Universidad", PlaceType.ATM,
-                "Carrera 7 # 43-00", LatLng(userLoc.latitude + 0.0025, userLoc.longitude + 0.0012)
-            )
+            NearbyPlace("1", "ATM Bancolombia Javeriana", PlaceType.ATM, "Cl. 40 #7-30", LatLng(effectiveLoc.latitude + 0.0008, effectiveLoc.longitude + 0.0009)),
+            NearbyPlace("2", "Corresponsal Nequi Calle 45", PlaceType.CORRESPONDENT, "Kr 13 #44-10", LatLng(effectiveLoc.latitude + 0.0030, effectiveLoc.longitude + 0.0019)),
+            NearbyPlace("3", "Davivienda Park Way", PlaceType.ATM, "Cl. 39 #24-15", LatLng(effectiveLoc.latitude + 0.0115, effectiveLoc.longitude - 0.0135)),
+            NearbyPlace("4", "Paga Todo Teusaquillo", PlaceType.PARTNER, "Kr 19 #34-12", LatLng(effectiveLoc.latitude - 0.0045, effectiveLoc.longitude - 0.0062)),
+            NearbyPlace("5", "Tienda Ara Aliada", PlaceType.STORE, "Cl. 45 #13-45", LatLng(effectiveLoc.latitude + 0.0015, effectiveLoc.longitude - 0.0015)),
+            NearbyPlace("6", "Cajero BBVA Carrera 7", PlaceType.ATM, "Kr 7 #43-00", LatLng(effectiveLoc.latitude + 0.0025, effectiveLoc.longitude + 0.0029))
         ).map { place ->
-            val distanceKm = calculateDistance(userLoc, place.location)
-            val distanceText = if (distanceKm < 1.0) {
-                String.format(Locale.getDefault(), "%.0f m", distanceKm * 1000)
+            val dist = calculateDistance(effectiveLoc, place.location)
+            val distText = if (dist < 1.0) {
+                String.format(Locale.getDefault(), "%.0f m", dist * 1000)
             } else {
-                String.format(Locale.getDefault(), "%.1f km", distanceKm)
+                String.format(Locale.getDefault(), "%.1f km", dist)
             }
-            place.copy(distanceText = distanceText)
-        }
+            place.copy(distanceText = distText)
+        }.sortedBy { calculateDistance(effectiveLoc, it.location) }
 
         _uiState.update { it.copy(nearbyPlaces = mockPlaces, isLoading = false) }
     }
@@ -115,12 +107,11 @@ class TrackingViewModel : ViewModel() {
     }
 
     fun calculateRoute(origin: LatLng, destination: LatLng, apiKey: String) {
-        if (apiKey.isEmpty() || apiKey == "YOUR_GOOGLE_MAPS_API_KEY") {
-            // Fallback inmediato a línea recta si no hay API Key válida
+        if (apiKey.isEmpty() || apiKey.startsWith("YOUR_")) {
+            Log.e(TAG, "Directions API: API Key no configurada o vacía.")
             _uiState.update { it.copy(
-                routePoints = listOf(origin, destination), 
-                isCalculatingRoute = false,
-                errorMessage = "API Key no configurada. Mostrando ruta directa."
+                routePoints = listOf(origin, destination),
+                errorMessage = "API key no configurada (Ruta directa)"
             ) }
             return
         }
@@ -132,23 +123,26 @@ class TrackingViewModel : ViewModel() {
                 val destStr = "${destination.latitude},${destination.longitude}"
                 val response = directionsService.getDirections(originStr, destStr, apiKey = apiKey)
 
+                Log.d(TAG, "Directions API Status: ${response.status}")
+                
                 if (response.status == "OK" && response.routes.isNotEmpty()) {
                     val encodedPolyline = response.routes[0].overview_polyline.points
                     val decodedPath = PolyUtil.decode(encodedPolyline)
+                    Log.d(TAG, "Directions API: ${decodedPath.size} puntos decodificados.")
                     _uiState.update { it.copy(routePoints = decodedPath, isCalculatingRoute = false) }
                 } else {
-                    // Fallback a línea recta si la API devuelve error o no hay rutas
+                    Log.w(TAG, "Directions API falló: ${response.status}. Usando fallback recto.")
                     _uiState.update { it.copy(
                         routePoints = listOf(origin, destination),
-                        errorMessage = "No se pudo obtener ruta por calles (${response.status}). Mostrando ruta directa.",
+                        errorMessage = "Ruta directa (${response.status})",
                         isCalculatingRoute = false
                     ) }
                 }
             } catch (e: Exception) {
-                // Fallback a línea recta en caso de error de red
+                Log.e(TAG, "Error en calculateRoute: ${e.message}")
                 _uiState.update { it.copy(
                     routePoints = listOf(origin, destination),
-                    errorMessage = "Error de conexión. Mostrando ruta directa.",
+                    errorMessage = "Error de red (Ruta directa)",
                     isCalculatingRoute = false
                 ) }
             }
@@ -156,7 +150,7 @@ class TrackingViewModel : ViewModel() {
     }
 
     private fun calculateDistance(start: LatLng, end: LatLng): Double {
-        val radius = 6371.0 // Radio de la Tierra en km
+        val radius = 6371.0
         val dLat = Math.toRadians(end.latitude - start.latitude)
         val dLon = Math.toRadians(end.longitude - start.longitude)
         val a = sin(dLat / 2).pow(2) +
