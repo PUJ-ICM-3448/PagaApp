@@ -12,9 +12,11 @@ import com.example.pagaapp.navigation.Routes
 import com.example.pagaapp.ui.screens.expenses.ExpensesViewModel
 import com.example.pagaapp.ui.screens.history.TransactionType
 import com.example.pagaapp.ui.screens.login.AuthViewModel
+import com.example.pagaapp.ui.screens.login.UserData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class ProfileViewModel : ViewModel() {
@@ -24,19 +26,20 @@ class ProfileViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            // Conectamos las estadísticas con los datos reales de las transacciones
-            ExpensesViewModel.historyTransactions.collect { transactions ->
-                updateProfileData(transactions)
-            }
+            // Combinamos el flujo del usuario y las transacciones para tener datos siempre actualizados
+            combine(
+                AuthViewModel.currentUser,
+                ExpensesViewModel.historyTransactions
+            ) { user, transactions ->
+                updateProfileData(user, transactions)
+            }.collect { }
         }
     }
 
-    private fun updateProfileData(transactions: List<com.example.pagaapp.ui.screens.history.HistoryModel>) {
-        val currentUser = AuthViewModel.currentUser
-        
-        val profileName = currentUser?.name ?: "Carlos Rodriguez"
-        val profileEmail = currentUser?.email ?: "carlos.rodriguez@email.com"
-        val profileInitials = currentUser?.initials ?: "CR"
+    private fun updateProfileData(currentUser: UserData?, transactions: List<com.example.pagaapp.ui.screens.history.HistoryModel>) {
+        val profileName = currentUser?.name ?: "Loading..."
+        val profileEmail = currentUser?.email ?: "Loading..."
+        val profileInitials = currentUser?.initials ?: ".."
 
         // Estadísticas reales basadas en el historial
         val expensesCount = transactions.count { it.type == TransactionType.EXPENSE }

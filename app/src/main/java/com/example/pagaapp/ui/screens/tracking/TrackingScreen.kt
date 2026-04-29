@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Looper
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -52,8 +53,17 @@ fun TrackingScreen(
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     
-    // API KEY placeholder
-    val googleApiKey = "YOUR_GOOGLE_MAPS_API_KEY" 
+    // Leer la API Key real desde el AndroidManifest meta-data
+    val googleApiKey = remember {
+        try {
+            val appInfo = context.packageManager.getApplicationInfo(
+                context.packageName, PackageManager.GET_META_DATA
+            )
+            appInfo.metaData?.getString("com.google.android.geo.API_KEY") ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(4.6285, -74.0648), 15f)
@@ -240,9 +250,8 @@ fun TrackingScreen(
                         }
                     },
                     onDirectionsClick = {
-                        val uri = Uri.parse("google.navigation:q=${place.location.latitude},${place.location.longitude}")
-                        val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage("com.google.android.apps.maps") }
-                        context.startActivity(intent)
+                        // Abrir Google Maps con navegación al lugar seleccionado
+                        openGoogleMapsNavigation(context, place, uiState.userLocation)
                     }
                 )
             }
@@ -349,4 +358,44 @@ private fun startLocationUpdates(client: FusedLocationProviderClient, viewModel:
             }
         }
     }, Looper.getMainLooper())
+}
+
+/**
+ * Abre Google Maps con navegación hacia el lugar seleccionado.
+ * Si el usuario tiene ubicación conocida, la usa como origen para mostrar la ruta completa.
+ * Si Google Maps no está instalado, abre la ruta en el navegador como fallback.
+ */
+private fun openGoogleMapsNavigation(context: Context, place: NearbyPlace, userLocation: LatLng?) {
+    val destLat = place.location.latitude
+    val destLng = place.location.longitude
+
+    // Intentar abrir Google Maps con navegación (modo driving)
+    val gmmUri = if (userLocation != null) {
+        // Con origen y destino — muestra ruta completa por calles
+        Uri.parse(
+            "https://www.google.com/maps/dir/?api=1" +
+            "&origin=${userLocation.latitude},${userLocation.longitude}" +
+            "&destination=$destLat,$destLng" +
+            "&travelmode=driving"
+        )
+    } else {
+        // Solo destino — Google Maps usará la ubicación actual del dispositivo
+        Uri.parse("google.navigation:q=$destLat,$destLng&mode=d")
+    }
+
+    val mapIntent = Intent(Intent.ACTION_VIEW, gmmUri)
+
+    // Intentar abrir con Google Maps primero
+    mapIntent.setPackage("com.google.android.apps.maps")
+    if (mapIntent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(mapIntent)
+    } else {
+        // Fallback: abrir en el navegador
+        mapIntent.setPackage(null)
+        try {
+            context.startActivity(mapIntent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "No se pudo abrir la navegación", Toast.LENGTH_SHORT).show()
+        }
+    }
 }

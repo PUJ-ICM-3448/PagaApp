@@ -1,6 +1,5 @@
 package com.example.pagaapp.ui.screens.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,7 +30,6 @@ import com.example.pagaapp.ui.screens.history.HistoryViewModel
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel(),
     historyViewModel: HistoryViewModel = viewModel()
 ) {
     val notifications by NotificationHelper.notifications.collectAsState()
@@ -39,7 +37,7 @@ fun HomeScreen(
     val historyState by historyViewModel.uiState.collectAsState()
 
     // Obtenemos el usuario actual del AuthViewModel
-    val currentUser = AuthViewModel.currentUser
+    val currentUser by AuthViewModel.currentUser.collectAsState()
 
     Scaffold(
         containerColor = AppBackground,

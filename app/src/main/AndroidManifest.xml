@@ -14,6 +14,11 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- Requerido en Android 11+ para poder abrir Google Maps con intent -->
+    <queries>
+        <package android:name="com.google.android.apps.maps" />
+    </queries>
+
     <application
         android:name=".PagaApp"
         android:allowBackup="true"

@@ -17,6 +17,12 @@ val CardBackground = Color(0xFFFFFFFF)
 val TextPrimary = Color(0xFF1F2937)
 val TextSecondary = Color(0xFF6B7280)
 
+// Dark Theme Colors
+val AppBackgroundDark = Color(0xFF111827)
+val CardBackgroundDark = Color(0xFF1F2937)
+val TextPrimaryDark = Color(0xFFF3F4F6)
+val TextSecondaryDark = Color(0xFF9CA3AF)
+
 // Navigation
 val NavActive = PrimaryGreen
 val NavInactive = Color(0xFF9CA3AF)

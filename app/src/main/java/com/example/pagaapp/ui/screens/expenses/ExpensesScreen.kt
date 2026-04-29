@@ -146,7 +146,7 @@ fun DebtCard(debt: DebtItem, showAction: Boolean = false, onActionClick: () -> U
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = CircleShape,
-                    color = debt.avatarColor
+                    color = Color(debt.avatarColor)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
@@ -186,7 +186,7 @@ fun DebtCard(debt: DebtItem, showAction: Boolean = false, onActionClick: () -> U
                         text = "$${String.format("%.2f", debt.amount)}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (debt.avatarColor == IncomeGreen) IncomeGreen else ExpenseRed
+                        color = if (debt.avatarColor == IncomeGreen.value.toLong()) IncomeGreen else ExpenseRed
                     )
                     
                     val statusColor = if (debt.status == DebtStatus.PAID) Color(0xFFD1FAE5) else Color(0xFFFEF3C7)

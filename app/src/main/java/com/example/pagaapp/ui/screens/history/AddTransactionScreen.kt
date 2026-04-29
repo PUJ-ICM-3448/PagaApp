@@ -1,11 +1,12 @@
 package com.example.pagaapp.ui.screens.history
 
-import android.graphics.Bitmap
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,18 +23,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.pagaapp.ui.theme.PrimaryGreen
 import com.example.pagaapp.ui.theme.TextPrimary
 import com.example.pagaapp.ui.theme.TextSecondary
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -44,27 +47,99 @@ fun AddTransactionScreen(
     onBack: () -> Unit,
     viewModel: HistoryViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+
     var title by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(if (initialType == "income") TransactionType.INCOME else TransactionType.EXPENSE) }
-    
-    var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        if (bitmap != null) {
-            capturedBitmap = bitmap
-            selectedImageUri = null
-        }
+    var selectedType by remember {
+        mutableStateOf(if (initialType == "income") TransactionType.INCOME else TransactionType.EXPENSE)
     }
 
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    // Image state — single Uri source of truth for both camera and gallery
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+
+    // --- Launchers ---
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         if (uri != null) {
             selectedImageUri = uri
-            capturedBitmap = null
         }
     }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            selectedImageUri = tempCameraUri
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
+        if (cameraGranted) {
+            showImageSourceDialog = true
+        }
+    }
+
+    // --- Helper functions ---
+
+    fun createImageUri(): Uri {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        val file = File.createTempFile("TX_${timeStamp}_", ".jpg", storageDir)
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+    }
+
+    fun checkAndRequestPermissions() {
+        val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+
+        if (cameraPermission == PackageManager.PERMISSION_GRANTED) {
+            showImageSourceDialog = true
+        } else {
+            permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+        }
+    }
+
+    // --- Image source dialog ---
+
+    if (showImageSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text("Attach Evidence") },
+            text = { Text("Choose an option to upload your receipt or proof") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val uri = createImageUri()
+                    tempCameraUri = uri
+                    cameraLauncher.launch(uri)
+                    showImageSourceDialog = false
+                }) {
+                    Text("Camera")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    galleryLauncher.launch("image/*")
+                    showImageSourceDialog = false
+                }) {
+                    Text("Gallery")
+                }
+            }
+        )
+    }
+
+    // --- UI ---
 
     Scaffold(
         topBar = {
@@ -130,10 +205,10 @@ fun AddTransactionScreen(
 
             // Evidence Section
             Text("Attachment / Evidence", fontWeight = FontWeight.Bold, color = TextPrimary)
-            
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = { cameraLauncher.launch() },
+                    onClick = { checkAndRequestPermissions() },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE2E8F0), contentColor = Color(0xFF475569))
                 ) {
@@ -161,14 +236,7 @@ fun AddTransactionScreen(
                     .background(Color(0xFFF1F5F9)),
                 contentAlignment = Alignment.Center
             ) {
-                if (capturedBitmap != null) {
-                    Image(
-                        bitmap = capturedBitmap!!.asImageBitmap(),
-                        contentDescription = "Preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (selectedImageUri != null) {
+                if (selectedImageUri != null) {
                     AsyncImage(
                         model = selectedImageUri,
                         contentDescription = "Preview",
@@ -187,17 +255,17 @@ fun AddTransactionScreen(
                     if (title.isNotEmpty() && amount.isNotEmpty()) {
                         val sdf = SimpleDateFormat("MMMM d, yyyy • HH:mm", Locale.getDefault())
                         val currentDate = sdf.format(Date())
-                        
+
                         val newTransaction = HistoryModel(
                             title = title,
                             category = if (category.isEmpty()) "General" else category,
                             date = currentDate,
                             amount = if (selectedType == TransactionType.EXPENSE) -amount.toDouble() else amount.toDouble(),
                             type = selectedType,
-                            imageUri = selectedImageUri?.toString() ?: "captured_bitmap"
+                            imageUri = selectedImageUri?.toString()
                         )
-                        
-                        viewModel.addTransaction(newTransaction)
+
+                        viewModel.addTransaction(newTransaction, context)
                         onBack()
                     }
                 },

@@ -1,106 +1,67 @@
 package com.example.pagaapp.ui.screens.expenses
 
 import android.content.Context
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.pagaapp.ui.screens.history.HistoryModel
 import com.example.pagaapp.ui.screens.history.TransactionType
 import com.example.pagaapp.utils.NotificationHelper
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ExpensesViewModel : ViewModel() {
     
-    // Singleton-like approach for debts state so it's shared between screens
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
+
     companion object {
-        private val initialYouOwe = listOf(
-            DebtItem(
-                id = "1",
-                name = "Maria Garcia",
-                description = "Dinner at Restaurant",
-                date = "March 8, 2026",
-                amount = 45.50,
-                status = DebtStatus.PENDING,
-                initials = "MG",
-                avatarColor = Color(0xFF10B981)
-            ),
-            DebtItem(
-                id = "2",
-                name = "Sofia Martinez",
-                description = "Coffee shop",
-                date = "March 3, 2026",
-                amount = 15.75,
-                status = DebtStatus.PAID,
-                initials = "SM",
-                avatarColor = Color(0xFF10B981)
-            ),
-            DebtItem(
-                id = "4",
-                name = "Carlos Ruiz",
-                description = "Rent share",
-                date = "March 1, 2026",
-                amount = 200.00,
-                status = DebtStatus.PENDING,
-                initials = "CR",
-                avatarColor = Color(0xFF3B82F6)
-            ),
-            DebtItem(
-                id = "5",
-                name = "Elena Gomez",
-                description = "Gym subscription",
-                date = "Feb 28, 2026",
-                amount = 30.00,
-                status = DebtStatus.PAID,
-                initials = "EG",
-                avatarColor = Color(0xFFF59E0B)
-            )
-        )
-
-        private val initialOwedToYou = listOf(
-            DebtItem(
-                id = "3",
-                name = "Juan Lopez",
-                description = "Movie tickets",
-                date = "March 5, 2026",
-                amount = 28.00,
-                status = DebtStatus.PENDING,
-                initials = "JL",
-                avatarColor = Color(0xFF10B981)
-            ),
-            DebtItem(
-                id = "6",
-                name = "Pedro Sanchez",
-                description = "Pizza night",
-                date = "March 10, 2026",
-                amount = 12.50,
-                status = DebtStatus.PENDING,
-                initials = "PS",
-                avatarColor = Color(0xFF8B5CF6)
-            ),
-            DebtItem(
-                id = "7",
-                name = "Ana Rodriguez",
-                description = "Gasoline",
-                date = "March 12, 2026",
-                amount = 40.00,
-                status = DebtStatus.PENDING,
-                initials = "AR",
-                avatarColor = Color(0xFFEC4899)
-            )
-        )
-
-        val debtsState = MutableStateFlow(ExpensesUiState(initialYouOwe, initialOwedToYou))
+        val debtsState = MutableStateFlow(ExpensesUiState(emptyList(), emptyList()))
         val historyTransactions = MutableStateFlow<List<HistoryModel>>(emptyList())
     }
 
     private val _uiState = debtsState
     val uiState: StateFlow<ExpensesUiState> = _uiState.asStateFlow()
 
+    init {
+        loadData()
+    }
+
+    private fun loadData() {
+        val user = auth.currentUser ?: return
+        
+        // Load You Owe (expenses)
+        db.collection("users").document(user.uid).collection("youOwe")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(DebtItem::class.java)?.copy(id = it.id) } ?: emptyList()
+                debtsState.update { it.copy(youOweList = list) }
+            }
+
+        // Load Owed To You (income/debts from others)
+        db.collection("users").document(user.uid).collection("owedToYou")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(DebtItem::class.java)?.copy(id = it.id) } ?: emptyList()
+                debtsState.update { it.copy(owedToYouList = list) }
+            }
+
+        // Load History
+        db.collection("users").document(user.uid).collection("history")
+            .orderBy("date", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(HistoryModel::class.java) } ?: emptyList()
+                historyTransactions.value = list
+            }
+    }
+
     fun registerPayment(context: Context, debtId: String, amount: Double, method: String, imageUri: String? = null) {
+        val user = auth.currentUser ?: return
         val currentState = _uiState.value
         val debt = currentState.youOweList.find { it.id == debtId }
             ?: currentState.owedToYouList.find { it.id == debtId }
@@ -115,41 +76,43 @@ class ExpensesViewModel : ViewModel() {
                 return
             }
 
-            // Update UI state locally
-            debtsState.update { state ->
-                val updatedYouOweList = state.youOweList.map { item ->
-                    if (item.id == debtId) item.copy(status = DebtStatus.PAID) else item
+            viewModelScope.launch {
+                try {
+                    // Update debt status in Firestore
+                    val collection = if (currentState.youOweList.any { d -> d.id == debtId }) "youOwe" else "owedToYou"
+                    db.collection("users").document(user.uid).collection(collection).document(debtId)
+                        .update("status", DebtStatus.PAID)
+
+                    // Add to history in Firestore
+                    val sdf = SimpleDateFormat("MMMM d, yyyy • HH:mm", Locale.getDefault())
+                    val currentDate = sdf.format(Date())
+                    
+                    val newTransaction = HistoryModel(
+                        title = "Payment to ${it.name}",
+                        category = "Payment",
+                        date = currentDate,
+                        amount = -amount,
+                        type = TransactionType.EXPENSE,
+                        imageUri = imageUri
+                    )
+                    
+                    db.collection("users").document(user.uid).collection("history")
+                        .add(newTransaction)
+                    
+                    // Notify user
+                    NotificationHelper.showNotification(
+                        context, 
+                        "Payment Successful", 
+                        "You paid $${String.format("%.2f", amount)} to ${it.name} via $method"
+                    )
+                } catch (e: Exception) {
+                    NotificationHelper.showNotification(
+                        context, 
+                        "Error", 
+                        "Failed to register payment: ${e.message}"
+                    )
                 }
-                val updatedOwedToYouList = state.owedToYouList.map { item ->
-                    if (item.id == debtId) item.copy(status = DebtStatus.PAID) else item
-                }
-                state.copy(
-                    youOweList = updatedYouOweList,
-                    owedToYouList = updatedOwedToYouList
-                )
             }
-            
-            // Add to history
-            val sdf = SimpleDateFormat("MMMM d, yyyy • HH:mm", Locale.getDefault())
-            val currentDate = sdf.format(Date())
-            
-            val newTransaction = HistoryModel(
-                title = "Payment to ${it.name}",
-                category = "Payment",
-                date = currentDate,
-                amount = -amount,
-                type = TransactionType.EXPENSE,
-                imageUri = imageUri
-            )
-            
-            historyTransactions.value = listOf(newTransaction) + historyTransactions.value
-            
-            // Notify user
-            NotificationHelper.showNotification(
-                context, 
-                "Payment Successful", 
-                "You paid $${String.format("%.2f", amount)} to ${it.name} via $method"
-            )
         } ?: run {
             NotificationHelper.showNotification(
                 context, 

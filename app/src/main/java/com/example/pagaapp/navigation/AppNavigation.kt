@@ -19,20 +19,33 @@ import com.example.pagaapp.ui.screens.home.HomeScreen
 import com.example.pagaapp.ui.screens.location.DeliveryScreen
 import com.example.pagaapp.ui.screens.login.LoginScreen
 import com.example.pagaapp.ui.screens.login.RegisterScreen
+import com.example.pagaapp.ui.screens.login.AuthViewModel
 import com.example.pagaapp.ui.screens.profile.ProfileScreen
 import com.example.pagaapp.ui.screens.tracking.TrackingScreen
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val currentUser by AuthViewModel.currentUser.collectAsState()
 
     val authRoutes = listOf(Routes.Login.route, Routes.Register.route)
 
+    // Redirigir a Home si ya hay sesión iniciada al estar en Login/Register
+    LaunchedEffect(currentUser) {
+        if (currentUser != null && (currentRoute == null || currentRoute in authRoutes)) {
+            navController.navigate(Routes.Home.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
-            if (currentRoute !in authRoutes) {
+            if (currentRoute != null && currentRoute !in authRoutes) {
                 AppBottomBar(navController)
             }
         }

@@ -1,34 +1,68 @@
 package com.example.pagaapp.ui.screens.login
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 data class UserData(
-    val name: String,
-    val email: String,
-    val initials: String
+    val name: String = "",
+    val email: String = "",
+    val initials: String = ""
 )
 
 class AuthViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
+
     companion object {
-        // Base de datos de credenciales
-        private val registeredUsers = mutableMapOf<String, String>(
-            "test@pagaapp.com" to "123456"
-        )
+        private val _currentUser = MutableStateFlow<UserData?>(null)
+        val currentUser: StateFlow<UserData?> = _currentUser.asStateFlow()
         
-        // Base de datos de información de perfil
-        private val userProfiles = mutableMapOf<String, UserData>(
-            "test@pagaapp.com" to UserData("Carlos Rodriguez", "test@pagaapp.com", "CR")
-        )
-        
-        // Usuario actualmente logueado
-        var currentUser: UserData? = null
-            private set
+        // Mantengo el acceso directo para compatibilidad rápida si es necesario, 
+        // pero lo ideal es usar el Flow.
+        val currentUserValue: UserData? get() = _currentUser.value
+    }
+
+    init {
+        // Restaurar sesión si existe
+        auth.currentUser?.let { firebaseUser ->
+            viewModelScope.launch {
+                try {
+                    val doc = db.collection("users").document(firebaseUser.uid).get().await()
+                    var userData = doc.toObject(UserData::class.java)
+                    
+                    if (userData != null && userData.initials.isEmpty() && userData.name.isNotEmpty()) {
+                        val initials = userData.name.split(" ").filter { it.isNotEmpty() }.let {
+                            if (it.size > 1) "${it[0][0]}${it[1][0]}".uppercase()
+                            else "${it[0][0]}".uppercase()
+                        }
+                        userData = userData.copy(initials = initials)
+                    }
+                    
+                    _currentUser.value = userData ?: UserData(
+                        name = firebaseUser.displayName ?: "User",
+                        email = firebaseUser.email ?: "",
+                        initials = "U"
+                    )
+                } catch (e: Exception) {
+                    // Si falla cargar el perfil, al menos tenemos el email
+                    _currentUser.value = UserData(
+                        name = firebaseUser.displayName ?: "User",
+                        email = firebaseUser.email ?: "",
+                        initials = "U"
+                    )
+                }
+            }
+        }
     }
 
     fun onEmailChange(email: String) {
@@ -54,38 +88,46 @@ class AuthViewModel : ViewModel() {
         if (validateLogin()) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             
-            if (registeredUsers[email] == password) {
-                currentUser = userProfiles[email]
-                _uiState.value = _uiState.value.copy(isLoading = false)
-                onSuccess()
-            } else {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "Invalid email or password"
-                )
-            }
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnSuccessListener { result ->
+                    viewModelScope.launch {
+                        try {
+                            val uid = result.user?.uid ?: throw Exception("No UID")
+                            val doc = db.collection("users").document(uid).get().await()
+                            var userData = doc.toObject(UserData::class.java)
+                            
+                            if (userData == null) {
+                                userData = UserData(
+                                    name = result.user?.displayName ?: "User",
+                                    email = result.user?.email ?: "",
+                                    initials = "U"
+                                )
+                            }
+                            
+                            _currentUser.value = userData
+                            _uiState.value = _uiState.value.copy(isLoading = false)
+                            onSuccess()
+                        } catch (e: Exception) {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                errorMessage = "Error loading profile: ${e.message}"
+                            )
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Invalid email or password"
+                    )
+                }
         }
     }
 
     fun loginWithSocial(platform: String, onSuccess: () -> Unit) {
-        _uiState.value = _uiState.value.copy(isLoading = true)
-        
-        // Simulamos login social
-        val socialEmail = "social@${platform.lowercase()}.com"
-        val socialName = "User $platform"
-        val initials = platform.first().uppercase()
-
-        val socialUser = UserData(socialName, socialEmail, initials)
-        
-        // Registramos si no existe
-        if (!registeredUsers.containsKey(socialEmail)) {
-            registeredUsers[socialEmail] = "social_pass"
-            userProfiles[socialEmail] = socialUser
-        }
-
-        currentUser = socialUser
-        _uiState.value = _uiState.value.copy(isLoading = false)
-        onSuccess()
+        // Esta función requeriría integración con SDKs específicos (Google, Facebook, etc.)
+        // Por ahora simulamos el éxito pero notificamos que falta implementación real
+        _uiState.value = _uiState.value.copy(errorMessage = "$platform login not implemented with Firebase yet")
     }
 
     fun register(onSuccess: () -> Unit) {
@@ -93,7 +135,9 @@ class AuthViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             val email = _uiState.value.email
+            val password = _uiState.value.password
             val name = _uiState.value.name
+            
             val initials = if (name.isNotEmpty()) {
                 name.split(" ").filter { it.isNotEmpty() }.let {
                     if (it.size > 1) "${it[0][0]}${it[1][0]}".uppercase()
@@ -101,16 +145,31 @@ class AuthViewModel : ViewModel() {
                 }
             } else "U"
 
-            // Guardamos credenciales
-            registeredUsers[email] = _uiState.value.password
-            
-            // Creamos y guardamos el perfil
-            val newUser = UserData(name, email, initials)
-            userProfiles[email] = newUser
-            currentUser = newUser
-            
-            _uiState.value = _uiState.value.copy(isLoading = false)
-            onSuccess()
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnSuccessListener { result ->
+                    val uid = result.user?.uid ?: return@addOnSuccessListener
+                    val newUser = UserData(name, email, initials)
+                    
+                    // Guardar en Firestore
+                    db.collection("users").document(uid).set(newUser)
+                        .addOnSuccessListener {
+                            _currentUser.value = newUser
+                            _uiState.value = _uiState.value.copy(isLoading = false)
+                            onSuccess()
+                        }
+                        .addOnFailureListener { e ->
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                errorMessage = "User created but profile failed: ${e.message}"
+                            )
+                        }
+                }
+                .addOnFailureListener { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Registration failed"
+                    )
+                }
         }
     }
 
@@ -152,8 +211,9 @@ class AuthViewModel : ViewModel() {
     }
 
     fun logout(onLogout: () -> Unit) {
+        auth.signOut()
         _uiState.value = AuthUiState()
-        currentUser = null
+        _currentUser.value = null
         onLogout()
     }
 }

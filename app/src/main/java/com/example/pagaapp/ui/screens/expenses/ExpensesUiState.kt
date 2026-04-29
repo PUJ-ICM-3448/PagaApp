@@ -3,14 +3,14 @@ package com.example.pagaapp.ui.screens.expenses
 import androidx.compose.ui.graphics.Color
 
 data class DebtItem(
-    val id: String,
-    val name: String,
-    val description: String,
-    val date: String,
-    val amount: Double,
-    val status: DebtStatus,
-    val initials: String,
-    val avatarColor: Color
+    val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val date: String = "",
+    val amount: Double = 0.0,
+    val status: DebtStatus = DebtStatus.PENDING,
+    val initials: String = "",
+    val avatarColor: Long = 0xFF10B981 // Store color as Long
 )
 
 enum class DebtStatus {
