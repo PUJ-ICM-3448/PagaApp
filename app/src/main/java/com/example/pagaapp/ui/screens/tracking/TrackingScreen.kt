@@ -44,6 +44,8 @@ import com.google.maps.android.compose.*
 @SuppressLint("MissingPermission")
 @Composable
 fun TrackingScreen(
+    onBack: () -> Unit = {},
+    showBack: Boolean = false,
     viewModel: TrackingViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -109,13 +111,21 @@ fun TrackingScreen(
                 }
             },
             navigationIcon = {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFFF1F3F5),
-                    modifier = Modifier.padding(start = 12.dp).size(40.dp)
-                ) {
-                    IconButton(onClick = { /* Navegación atrás si fuera necesario */ }) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Color(0xFF374151))
+                if (showBack) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFF1F3F5),
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .size(40.dp)
+                    ) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color(0xFF374151)
+                            )
+                        }
                     }
                 }
             },
