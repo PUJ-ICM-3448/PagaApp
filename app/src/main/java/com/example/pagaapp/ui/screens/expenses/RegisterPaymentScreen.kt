@@ -1,5 +1,13 @@
 package com.example.pagaapp.ui.screens.expenses
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,12 +24,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.pagaapp.ui.theme.*
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +46,7 @@ fun RegisterPaymentScreen(
     debtId: String?,
     expensesViewModel: ExpensesViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val uiState by expensesViewModel.uiState.collectAsState()
     val debt = uiState.youOweList.find { it.id == debtId } ?: uiState.owedToYouList.find { it.id == debtId }
 
@@ -37,7 +54,100 @@ fun RegisterPaymentScreen(
     var selectedMethod by remember { mutableStateOf("Bank Transfer") }
     var expanded by remember { mutableStateOf(false) }
 
+    // Image Proof States
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+
     val methods = listOf("Bank Transfer", "Cash", "Credit Card", "Digital Wallet")
+
+    // Image Launchers
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            selectedImageUri = tempCameraUri
+        }
+    }
+
+    // Permission Launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
+        val galleryGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions[Manifest.permission.READ_MEDIA_IMAGES] ?: false
+        } else {
+            permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
+        }
+
+        if (cameraGranted && galleryGranted) {
+            showImageSourceDialog = true
+        }
+    }
+
+    fun checkAndRequestPermissions() {
+        val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        val galleryPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        if (cameraPermission == PackageManager.PERMISSION_GRANTED && galleryPermission == PackageManager.PERMISSION_GRANTED) {
+            showImageSourceDialog = true
+        } else {
+            val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                arrayOf(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            permissionLauncher.launch(permissions)
+        }
+    }
+
+    fun createImageUri(): Uri {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        val file = File.createTempFile("PAYMENT_${timeStamp}_", ".jpg", storageDir)
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+    }
+
+    if (showImageSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text("Select Payment Proof") },
+            text = { Text("Choose an option to upload your receipt") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val uri = createImageUri()
+                    tempCameraUri = uri
+                    cameraLauncher.launch(uri)
+                    showImageSourceDialog = false
+                }) {
+                    Text("Camera")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    galleryLauncher.launch("image/*")
+                    showImageSourceDialog = false
+                }) {
+                    Text("Gallery")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -51,7 +161,30 @@ fun RegisterPaymentScreen(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = PrimaryGreen)
             )
         },
-        containerColor = AppBackground
+        containerColor = AppBackground,
+        bottomBar = {
+            Button(
+                onClick = {
+                    debt?.let {
+                        expensesViewModel.registerPayment(
+                            context,
+                            it.id,
+                            amount.toDoubleOrNull() ?: 0.0,
+                            selectedMethod,
+                            selectedImageUri?.toString()
+                        )
+                        navController.popBackStack()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Confirm Payment", fontWeight = FontWeight.Bold)
+            }
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -162,27 +295,37 @@ fun RegisterPaymentScreen(
                         .fillMaxWidth()
                         .height(200.dp)
                         .background(Color.White, RoundedCornerShape(12.dp))
-                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .clickable { checkAndRequestPermissions() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Outlined.FileUpload,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = Color.Gray
+                    if (selectedImageUri != null) {
+                        AsyncImage(
+                            model = selectedImageUri,
+                            contentDescription = "Payment Proof",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Upload screenshot or receipt",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            "Camera or Gallery",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Outlined.FileUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Upload screenshot or receipt",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                "Camera or Gallery",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
             }

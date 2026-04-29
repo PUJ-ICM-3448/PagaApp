@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Looper
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -18,10 +17,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,34 +44,26 @@ import com.google.maps.android.compose.*
 @SuppressLint("MissingPermission")
 @Composable
 fun TrackingScreen(
-    viewModel: TrackingViewModel = viewModel(),
-    onBack: () -> Unit = {},
-    showBack: Boolean = false
+    viewModel: TrackingViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     
-    // API KEY dinámica del Manifest
-    val googleApiKey = remember {
-        try {
-            val appInfo = context.packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
-            appInfo.metaData.getString("com.google.android.geo.API_KEY") ?: ""
-        } catch (e: Exception) { "" }
-    }
+    // API KEY placeholder
+    val googleApiKey = "YOUR_GOOGLE_MAPS_API_KEY" 
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(4.6280, -74.0649), 15f)
+        position = CameraPosition.fromLatLngZoom(LatLng(4.6285, -74.0648), 15f)
     }
 
-    // Centrar al cambiar ubicación (solo la primera vez para no molestar al usuario)
+    // Centrar cámara cuando cambia la ubicación del usuario o el lugar seleccionado
     LaunchedEffect(uiState.userLocation) {
         uiState.userLocation?.let {
             cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(it, 15f))
         }
     }
 
-    // Centrar al seleccionar lugar
     LaunchedEffect(uiState.selectedPlace) {
         uiState.selectedPlace?.let {
             cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(it.location, 16f))
@@ -83,10 +74,11 @@ fun TrackingScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions.values.all { it }) {
+        val granted = permissions.values.all { it }
+        if (granted) {
             startLocationUpdates(fusedLocationClient, viewModel)
         } else {
-            viewModel.updateUserLocation(null)
+            viewModel.updateUserLocation(null) // Carga ubicación fallback
         }
     }
 
@@ -104,62 +96,69 @@ fun TrackingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(Color(0xFFF3F4F6))
     ) {
+        // --- HEADER ---
         TopAppBar(
             modifier = Modifier.statusBarsPadding(),
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
             title = {
                 Column {
-                    Text("Nearby Cash Points", color = Color(0xFF1E293B), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("Bogotá Demo Mode", style = MaterialTheme.typography.bodySmall, color = Color(0xFF3B82F6))
+                    Text("Nearby Cash Points", color = Color(0xFF0D1B3D), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Find locations near you", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF7C8799))
                 }
             },
             navigationIcon = {
-                if (showBack) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFFF1F3F5),
+                    modifier = Modifier.padding(start = 12.dp).size(40.dp)
+                ) {
+                    IconButton(onClick = { /* Navegación atrás si fuera necesario */ }) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Color(0xFF374151))
+                    }
+                }
+            },
+            actions = {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFF16A34A),
+                    modifier = Modifier.padding(end = 12.dp).size(40.dp)
+                ) {
+                    IconButton(onClick = { }) {
+                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                 }
             }
         )
 
-        // MAPA FIJO
+        // --- MAP SECTION ---
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
                 .padding(16.dp),
             shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
-                uiSettings = MapUiSettings(
-                    zoomControlsEnabled = true,
-                    myLocationButtonEnabled = true
-                )
+                properties = MapProperties(isMyLocationEnabled = false),
+                uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
             ) {
-                // Ubicación Actual como PUNTO AZUL (Circle)
+                // User Marker
                 uiState.userLocation?.let { pos ->
-                    Circle(
-                        center = pos,
-                        radius = 45.0,
-                        fillColor = Color(0x332563EB),
-                        strokeColor = Color(0x662563EB),
-                        strokeWidth = 2f
-                    )
-                    Circle(
-                        center = pos,
-                        radius = 12.0,
-                        fillColor = Color(0xFF2563EB),
-                        strokeColor = Color.White,
-                        strokeWidth = 6f
+                    Marker(
+                        state = MarkerState(position = pos),
+                        title = "Tu ubicación",
+                        rotation = uiState.userHeading,
+                        anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                        icon = BitmapDescriptorFactory.fromResource(android.R.drawable.ic_menu_compass)
                     )
                 }
 
-                // Marcadores de Lugares
+                // Places Markers
                 uiState.nearbyPlaces.forEach { place ->
                     Marker(
                         state = MarkerState(position = place.location),
@@ -182,18 +181,18 @@ fun TrackingScreen(
                     )
                 }
 
-                // Ruta
+                // Polyline
                 if (uiState.routePoints.isNotEmpty()) {
                     Polyline(
                         points = uiState.routePoints,
-                        color = Color(0xFF2563EB),
-                        width = 12f,
-                        jointType = com.google.android.gms.maps.model.JointType.ROUND
+                        color = Color(0xFF16A34A),
+                        width = 10f
                     )
                 }
             }
         }
 
+        // --- LIST SECTION ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -201,28 +200,36 @@ fun TrackingScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Locations Near You", fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B))
-            if (uiState.isCalculatingRoute) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Text("Nearby Locations", style = MaterialTheme.typography.titleMedium, color = Color(0xFF0D1B3D), fontWeight = FontWeight.Bold)
+            Surface(
+                color = Color(0xFFE8F5E9),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    "${uiState.nearbyPlaces.size} found",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    color = Color(0xFF16A34A),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            contentPadding = PaddingValues(bottom = 80.dp) 
         ) {
             items(uiState.nearbyPlaces) { place ->
-                val isSelected = uiState.selectedPlace?.id == place.id
-                NearbyPlaceItem(
+                NearbyPlaceCard(
                     place = place,
-                    isSelected = isSelected,
+                    isSelected = uiState.selectedPlace?.id == place.id,
                     onSelect = {
                         viewModel.selectPlace(place)
                         uiState.userLocation?.let { user ->
                             viewModel.calculateRoute(user, place.location, googleApiKey)
                         }
                     },
-                    onExternalMapsClick = {
+                    onDirectionsClick = {
                         val uri = Uri.parse("google.navigation:q=${place.location.latitude},${place.location.longitude}")
                         val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage("com.google.android.apps.maps") }
                         context.startActivity(intent)
@@ -234,53 +241,76 @@ fun TrackingScreen(
 }
 
 @Composable
-fun NearbyPlaceItem(
+fun NearbyPlaceCard(
     place: NearbyPlace,
     isSelected: Boolean,
     onSelect: () -> Unit,
-    onExternalMapsClick: () -> Unit
+    onDirectionsClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onSelect() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFFEFF6FF) else Color.White
+            containerColor = if (isSelected) Color(0xFFE8F5E9) else Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(getPlaceColor(place.type).copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.LocationOn, contentDescription = null, tint = getPlaceColor(place.type), modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = getPlaceColor(place.type),
+                    modifier = Modifier.size(24.dp)
+                )
             }
             
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                Text(place.name, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), fontSize = 14.sp)
-                Text(place.address, style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+                Text(place.name, fontWeight = FontWeight.Bold, color = Color(0xFF0D1B3D), fontSize = 16.sp)
+                Text(place.type.name, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7C8799))
+                Text(place.address, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7C8799))
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                Text(place.distanceText, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB), fontSize = 12.sp)
-                Row {
-                    IconButton(onClick = onSelect, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Directions, contentDescription = "Ruta", tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onExternalMapsClick, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Navigation, contentDescription = "Maps", tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
-                    }
+                Surface(
+                    color = Color(0xFFF1F3F5),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        place.distanceText,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF374151)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = onDirectionsClick,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Navigation, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(16.dp), 
+                        tint = Color(0xFF16A34A)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Get directions", color = Color(0xFF16A34A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -295,12 +325,13 @@ private fun getPlaceColor(type: PlaceType): Color = when(type) {
 }
 
 private fun hasLocationPermission(context: Context): Boolean {
-    return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+           ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 }
 
 @SuppressLint("MissingPermission")
 private fun startLocationUpdates(client: FusedLocationProviderClient, viewModel: TrackingViewModel) {
-    val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000).build()
+    val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000).build()
     client.requestLocationUpdates(request, object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.lastLocation?.let { 

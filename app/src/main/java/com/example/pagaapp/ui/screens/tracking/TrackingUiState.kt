@@ -4,6 +4,7 @@ import com.google.android.gms.maps.model.LatLng
 
 data class TrackingUiState(
     val userLocation: LatLng? = null,
+    val userHeading: Float = 0f,
     val nearbyPlaces: List<NearbyPlace> = emptyList(),
     val selectedPlace: NearbyPlace? = null,
     val routePoints: List<LatLng> = emptyList(),
