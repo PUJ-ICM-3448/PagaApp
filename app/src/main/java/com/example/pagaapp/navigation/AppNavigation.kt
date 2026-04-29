@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -22,6 +24,7 @@ import com.example.pagaapp.ui.screens.login.RegisterScreen
 import com.example.pagaapp.ui.screens.login.AuthViewModel
 import com.example.pagaapp.ui.screens.profile.ProfileScreen
 import com.example.pagaapp.ui.screens.tracking.TrackingScreen
+import com.example.pagaapp.ui.sensors.SensorViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 
@@ -33,6 +36,25 @@ fun AppNavigation() {
     val currentUser by AuthViewModel.currentUser.collectAsState()
 
     val authRoutes = listOf(Routes.Login.route, Routes.Register.route)
+
+    // --- Sensor: Acelerómetro → Shake para navegar a Send Payment ---
+    val sensorViewModel: SensorViewModel = viewModel()
+    val lastShakeTime by sensorViewModel.lastShakeTime.collectAsState()
+
+    // Ruta destino del shake
+    val sendPaymentRoute = remember { Routes.AddTransaction.createRoute("expense") }
+
+    // Detectar shake y navegar (con debounce de 2 segundos)
+    LaunchedEffect(lastShakeTime) {
+        if (lastShakeTime > 0L
+            && currentUser != null                                    // Solo si está autenticado
+            && currentRoute != null
+            && currentRoute !in authRoutes                            // No en pantallas de auth
+            && currentRoute != Routes.AddTransaction.route            // No si ya está en la pantalla destino
+        ) {
+            navController.navigate(sendPaymentRoute)
+        }
+    }
 
     // Redirigir a Home si ya hay sesión iniciada al estar en Login/Register
     LaunchedEffect(currentUser) {
