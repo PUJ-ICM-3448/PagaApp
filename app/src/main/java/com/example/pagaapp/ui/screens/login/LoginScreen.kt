@@ -1,5 +1,6 @@
 package com.example.pagaapp.ui.screens.login
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,18 +13,48 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pagaapp.navigation.Routes
 import com.example.pagaapp.ui.theme.PrimaryGreen
 
 @Composable
-fun LoginScreen(navController: NavController) {
+fun LoginScreen(
+    navController: NavController,
+    viewModel: LoginViewModel = viewModel()
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val loginResult by viewModel.loginResult.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(loginResult) {
+        when (loginResult) {
+            is LoginResult.Success -> {
+                val role = (loginResult as LoginResult.Success).role
+                if (role == "repartidor") {
+                    navController.navigate(Routes.Repartidor.route) {
+                        popUpTo(Routes.Login.route) { inclusive = true }
+                    }
+                } else {
+                    navController.navigate(Routes.Home.route) {
+                        popUpTo(Routes.Login.route) { inclusive = true }
+                    }
+                }
+                viewModel.resetResult()
+            }
+            is LoginResult.Error -> {
+                Toast.makeText(context, (loginResult as LoginResult.Error).message, Toast.LENGTH_SHORT).show()
+                viewModel.resetResult()
+            }
+            else -> {}
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -118,23 +149,24 @@ fun LoginScreen(navController: NavController) {
 
             // Login Button
             Button(
-                onClick = { 
-                    navController.navigate(Routes.Home.route) {
-                        popUpTo(Routes.Login.route) { inclusive = true }
-                    }
-                },
+                onClick = { viewModel.login(email, password) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                enabled = loginResult !is LoginResult.Loading
             ) {
-                Text(
-                    text = "Login",
-                    color = PrimaryGreen,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (loginResult is LoginResult.Loading) {
+                    CircularProgressIndicator(color = PrimaryGreen)
+                } else {
+                    Text(
+                        text = "Login",
+                        color = PrimaryGreen,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -152,13 +184,13 @@ fun LoginScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Divider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.5f))
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.5f))
                 Text(
                     text = " Or continue with ",
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 12.sp
                 )
-                Divider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.5f))
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.5f))
             }
 
             Spacer(modifier = Modifier.height(24.dp))

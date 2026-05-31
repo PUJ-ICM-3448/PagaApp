@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.maps.android.compose.*
 
 @Composable
@@ -48,6 +49,16 @@ fun TrackingScreen(
                         viewModel.selectPlace(place)
                         false
                     }
+                )
+            }
+
+            // Marcadores de Repartidores Activos
+            uiState.repartidoresActivos.forEach { repartidor ->
+                Marker(
+                    state = MarkerState(position = LatLng(repartidor.latitud, repartidor.longitud)),
+                    title = repartidor.nombre,
+                    snippet = "Repartidor Activo",
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
                 )
             }
         }

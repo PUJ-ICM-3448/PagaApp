@@ -2,6 +2,7 @@ package com.example.pagaapp.ui.screens.tracking
 
 import androidx.lifecycle.ViewModel
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,17 +11,32 @@ import kotlin.math.*
 
 class TrackingViewModel : ViewModel() {
 
+    private val db = FirebaseFirestore.getInstance()
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
 
     init {
         loadNearbyPlaces()
+        escucharRepartidores()
+    }
+
+    private fun escucharRepartidores() {
+        db.collection("repartidoresActivos")
+            .whereEqualTo("estado", "activo")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) return@addSnapshotListener
+
+                val lista = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(RepartidorActivo::class.java)?.copy(uid = doc.id)
+                } ?: emptyList()
+                
+                _uiState.update { it.copy(repartidoresActivos = lista) }
+            }
     }
 
     private fun loadNearbyPlaces() {
         val userLoc = _uiState.value.userLocation
         
-        // Datos simulados (Cajeros y Corresponsales en Bogotá cerca del centro)
         val mockPlaces = listOf(
             NearbyPlace(
                 "1", "Cajero Bancolombia", PlaceType.ATM, 
@@ -50,9 +66,8 @@ class TrackingViewModel : ViewModel() {
         _uiState.update { it.copy(selectedPlace = place) }
     }
 
-    // Fórmula de Haversine para calcular distancia en km
     private fun calculateDistance(start: LatLng, end: LatLng): Double {
-        val radius = 6371.0 // Radio de la Tierra en km
+        val radius = 6371.0
         val dLat = Math.toRadians(end.latitude - start.latitude)
         val dLon = Math.toRadians(end.longitude - start.longitude)
         val a = sin(dLat / 2).pow(2) +

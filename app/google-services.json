@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "82516149911",
+    "project_id": "pagaappfinal",
+    "storage_bucket": "pagaappfinal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82516149911:android:fb18455969385f8a0a0bd2",
+        "android_client_info": {
+          "package_name": "com.example.pagaapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQNsNwi4WqVyRyyFKA1j7m246rwBu0g1g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

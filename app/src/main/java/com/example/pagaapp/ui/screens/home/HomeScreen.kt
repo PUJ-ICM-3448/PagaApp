@@ -50,12 +50,6 @@ import com.example.pagaapp.ui.theme.CardBackground
 import com.example.pagaapp.ui.theme.CashPointsGreen
 import com.example.pagaapp.ui.theme.CashDeliveryBlue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import com.example.pagaapp.navigation.Routes
 
 
@@ -302,7 +296,7 @@ fun QuickAccessCards(navController: NavController) {
             subtitle = "Find nearby",
             backgroundColor = CashPointsGreen,
             modifier = Modifier.weight(1f),
-            onClick = { /* TODO */ }
+            onClick = { navController.navigate(Routes.Location.route) }
         )
 
         QuickCard(
@@ -310,7 +304,7 @@ fun QuickAccessCards(navController: NavController) {
             subtitle = "Request now",
             backgroundColor = CashDeliveryBlue,
             modifier = Modifier.weight(1f),
-            onClick = { navController.navigate(Routes.Tracking.route) }
+            onClick = { navController.navigate(Routes.RequestCash.route) }
         )
     }
 }
@@ -433,4 +427,3 @@ fun DebtCard(debt: DebtItemData) {
         }
     }
 }
-

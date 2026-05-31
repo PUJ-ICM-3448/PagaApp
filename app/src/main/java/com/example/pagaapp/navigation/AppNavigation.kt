@@ -19,6 +19,10 @@ import com.example.pagaapp.ui.screens.location.LocationScreen
 import com.example.pagaapp.ui.screens.login.LoginScreen
 import com.example.pagaapp.ui.screens.profile.ProfileScreen
 import com.example.pagaapp.ui.screens.tracking.TrackingScreen
+import com.example.pagaapp.ui.screens.repartidor.RepartidorScreen
+import com.example.pagaapp.ui.screens.cash.RequestCashScreen
+import com.example.pagaapp.ui.screens.cash.TrackingRequestScreen
+import com.example.pagaapp.ui.screens.repartidor.DeliveryMapScreen
 
 @Composable
 fun AppNavigation() {
@@ -28,8 +32,17 @@ fun AppNavigation() {
 
     Scaffold(
         bottomBar = {
-            // Only show bottom bar if we are NOT in the Login screen
-            if (currentRoute != Routes.Login.route) {
+            val hideBottomBar = listOf(
+                Routes.Login.route,
+                Routes.Repartidor.route,
+                Routes.DeliveryMap.route,
+                Routes.TrackingRequest.route
+            )
+            val shouldShowBottomBar = currentRoute !in hideBottomBar && 
+                                     currentRoute?.startsWith("tracking_request") == false && 
+                                     currentRoute?.startsWith("delivery_map") == false
+            
+            if (shouldShowBottomBar) {
                 AppBottomBar(navController)
             }
         }
@@ -67,12 +80,36 @@ fun AppNavigation() {
                 LocationScreen(navController)
             }
 
+            composable(Routes.RequestCash.route) {
+                RequestCashScreen(navController)
+            }
+
+            composable(
+                route = Routes.TrackingRequest.route,
+                arguments = listOf(navArgument("solicitudId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("solicitudId") ?: ""
+                TrackingRequestScreen(id, navController)
+            }
+
             composable(Routes.Tracking.route) {
-                TrackingScreen() // Fixed: Removed navController argument
+                TrackingScreen()
             }
 
             composable(Routes.Profile.route) {
                 ProfileScreen(navController)
+            }
+
+            composable(Routes.Repartidor.route) {
+                RepartidorScreen(navController)
+            }
+
+            composable(
+                route = Routes.DeliveryMap.route,
+                arguments = listOf(navArgument("solicitudId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("solicitudId") ?: ""
+                DeliveryMapScreen(id, navController)
             }
         }
     }
