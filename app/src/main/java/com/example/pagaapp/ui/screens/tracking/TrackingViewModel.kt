@@ -35,31 +35,29 @@ class TrackingViewModel : ViewModel() {
     }
 
     private fun loadNearbyPlaces() {
-        val userLoc = _uiState.value.userLocation
-        
-        val mockPlaces = listOf(
-            NearbyPlace(
-                "1", "Cajero Bancolombia", PlaceType.ATM, 
-                LatLng(userLoc.latitude + 0.002, userLoc.longitude + 0.002)
-            ),
-            NearbyPlace(
-                "2", "Corresponsal Nequi", PlaceType.CORRESPONDENT, 
-                LatLng(userLoc.latitude - 0.003, userLoc.longitude + 0.001)
-            ),
-            NearbyPlace(
-                "3", "Cajero Davivienda", PlaceType.ATM, 
-                LatLng(userLoc.latitude + 0.001, userLoc.longitude - 0.004)
-            ),
-            NearbyPlace(
-                "4", "Punto Paga Todo", PlaceType.CORRESPONDENT, 
-                LatLng(userLoc.latitude - 0.001, userLoc.longitude - 0.002)
-            )
-        ).map { place ->
-            val distance = calculateDistance(userLoc, place.location)
-            place.copy(distanceText = String.format("%.2f km", distance))
+        db.collection("locations").addSnapshotListener { snapshot, e ->
+            if (e != null || snapshot == null) return@addSnapshotListener
+            
+            val userLoc = _uiState.value.userLocation
+            val places = snapshot.documents.mapNotNull { doc ->
+                val lat = doc.getDouble("latitud") ?: return@mapNotNull null
+                val lon = doc.getDouble("longitud") ?: return@mapNotNull null
+                val name = doc.getString("name") ?: "Punto de efectivo"
+                val typeStr = doc.getString("type") ?: "ATM"
+                
+                val location = LatLng(lat, lon)
+                val distance = calculateDistance(userLoc, location)
+                
+                NearbyPlace(
+                    id = doc.id,
+                    name = name,
+                    type = if (typeStr == "ATM") PlaceType.ATM else PlaceType.CORRESPONDENT,
+                    location = location,
+                    distanceText = String.format("%.2f km", distance)
+                )
+            }
+            _uiState.update { it.copy(nearbyPlaces = places) }
         }
-
-        _uiState.update { it.copy(nearbyPlaces = mockPlaces) }
     }
 
     fun selectPlace(place: NearbyPlace?) {

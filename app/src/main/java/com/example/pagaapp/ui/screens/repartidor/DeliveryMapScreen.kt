@@ -16,15 +16,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.pagaapp.R
 import com.example.pagaapp.ui.theme.PrimaryGreen
 import com.example.pagaapp.ui.theme.AppBackground
 import com.example.pagaapp.ui.theme.CardBackground
 import com.example.pagaapp.ui.theme.TextPrimary
 import com.example.pagaapp.ui.theme.TextSecondary
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +70,17 @@ fun DeliveryMapScreen(
                 position = CameraPosition.fromLatLngZoom(repartidorLocation, 15f)
             }
 
+            // Actualizar cámara para ajustar ambos puntos si están disponibles
+            LaunchedEffect(clienteLocation, repartidorLocation) {
+                if (clienteLocation.latitude != 0.0 && repartidorLocation.latitude != 0.0) {
+                    val bounds = LatLngBounds.builder()
+                        .include(clienteLocation)
+                        .include(repartidorLocation)
+                        .build()
+                    cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 150))
+                }
+            }
+
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
@@ -76,14 +90,22 @@ fun DeliveryMapScreen(
                     Marker(
                         state = rememberMarkerState(position = clienteLocation),
                         title = "Cliente: ${uiState.clienteNombre}",
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                        icon = BitmapDescriptorFactory.fromResource(R.drawable.cliente)
                     )
 
                     Marker(
                         state = rememberMarkerState(position = repartidorLocation),
                         title = "Tu ubicación",
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                        icon = BitmapDescriptorFactory.fromResource(R.drawable.repartidor)
                     )
+
+                    if (uiState.estado == "aceptado" || uiState.estado == "en_camino") {
+                        Polyline(
+                            points = listOf(repartidorLocation, clienteLocation),
+                            color = PrimaryGreen,
+                            width = 10f
+                        )
+                    }
                 }
 
                 // Panel inferior con detalles

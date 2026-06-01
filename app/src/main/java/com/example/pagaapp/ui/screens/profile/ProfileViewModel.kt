@@ -7,11 +7,16 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 class ProfileViewModel : ViewModel() {
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -21,39 +26,56 @@ class ProfileViewModel : ViewModel() {
     }
 
     private fun loadProfile() {
-        _uiState.value = ProfileUiState(
-            profile = ProfileModel(
-                name = "Carlos Rodriguez",
-                email = "carlos.rodriguez@email.com",
-                initials = "CR",
-                memberSince = "January 2026",
-                totalTransactions = 47,
-                activeFriends = 12,
-                totalShared = 847,
-                expenses = 32,
-                settings = listOf(
-                    ProfileSettingModel(
-                        title = "Payment Methods",
-                        icon = Icons.Outlined.CreditCard
-                    ),
-                    ProfileSettingModel(
-                        title = "Location Preferences",
-                        icon = Icons.Outlined.LocationOn
-                    ),
-                    ProfileSettingModel(
-                        title = "Security and Verification",
-                        icon = Icons.Outlined.Shield
-                    ),
-                    ProfileSettingModel(
-                        title = "Help & Support",
-                        icon = Icons.Outlined.HelpOutline
-                    ),
-                    ProfileSettingModel(
-                        title = "App Settings",
-                        icon = Icons.Outlined.Settings
-                    )
-                )
-            )
-        )
+        val uid = auth.currentUser?.uid ?: return
+        
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val name = document.getString("name") ?: "Usuario"
+                    val email = document.getString("email") ?: auth.currentUser?.email ?: ""
+                    val initials = name.split(" ").filter { it.isNotEmpty() }
+                        .map { it[0] }
+                        .take(2)
+                        .joinToString("")
+                        .uppercase()
+
+                    _uiState.update {
+                        it.copy(
+                            profile = ProfileModel(
+                                name = name,
+                                email = email,
+                                initials = initials,
+                                memberSince = "January 2024", // Mocked for now
+                                totalTransactions = 47,
+                                activeFriends = 12,
+                                totalShared = 847,
+                                expenses = 32,
+                                settings = listOf(
+                                    ProfileSettingModel(
+                                        title = "Payment Methods",
+                                        icon = Icons.Outlined.CreditCard
+                                    ),
+                                    ProfileSettingModel(
+                                        title = "Location Preferences",
+                                        icon = Icons.Outlined.LocationOn
+                                    ),
+                                    ProfileSettingModel(
+                                        title = "Security and Verification",
+                                        icon = Icons.Outlined.Shield
+                                    ),
+                                    ProfileSettingModel(
+                                        title = "Help & Support",
+                                        icon = Icons.Outlined.HelpOutline
+                                    ),
+                                    ProfileSettingModel(
+                                        title = "App Settings",
+                                        icon = Icons.Outlined.Settings
+                                    )
+                                )
+                            )
+                        )
+                    }
+                }
+            }
     }
 }

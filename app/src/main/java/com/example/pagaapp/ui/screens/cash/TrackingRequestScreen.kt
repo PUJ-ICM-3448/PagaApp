@@ -10,16 +10,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.pagaapp.R
 import com.example.pagaapp.ui.theme.PrimaryGreen
 import com.example.pagaapp.ui.theme.AppBackground
 import com.example.pagaapp.ui.theme.CardBackground
 import com.example.pagaapp.ui.theme.TextPrimary
 import com.example.pagaapp.ui.theme.TextSecondary
+import com.example.pagaapp.util.bitmapDescriptorFromResource
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -33,9 +36,18 @@ fun TrackingRequestScreen(
     viewModel: TrackingRequestViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(solicitudId) {
         viewModel.startTracking(solicitudId)
+    }
+
+    // Marcadores redimensionados para el seguimiento del pedido
+    val clienteIcon = remember(context) {
+        bitmapDescriptorFromResource(context, R.drawable.cliente, 80, 80)
+    }
+    val repartidorIcon = remember(context) {
+        bitmapDescriptorFromResource(context, R.drawable.repartidor, 80, 80)
     }
 
     Scaffold(
@@ -67,11 +79,6 @@ fun TrackingRequestScreen(
                 position = CameraPosition.fromLatLngZoom(clienteLocation, 15f)
             }
 
-            // Actualizar cámara si el repartidor se mueve significativamente o al inicio
-            LaunchedEffect(uiState.repartidorLatitud, uiState.repartidorLongitud) {
-                 // Opcional: animar cámara para mostrar ambos si están lejos
-            }
-
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
@@ -81,14 +88,20 @@ fun TrackingRequestScreen(
                     Marker(
                         state = rememberMarkerState(position = clienteLocation),
                         title = "Tu ubicación",
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                        icon = clienteIcon
                     )
 
                     if (uiState.estado == "aceptado" || uiState.estado == "en_camino") {
                         Marker(
                             state = rememberMarkerState(position = repartidorLocation),
                             title = "Repartidor: ${uiState.repartidorNombre}",
-                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                            icon = repartidorIcon
+                        )
+
+                        Polyline(
+                            points = listOf(repartidorLocation, clienteLocation),
+                            color = PrimaryGreen,
+                            width = 10f
                         )
                     }
                 }

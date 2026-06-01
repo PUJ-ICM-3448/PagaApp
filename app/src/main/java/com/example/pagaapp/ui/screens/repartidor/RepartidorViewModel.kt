@@ -78,24 +78,35 @@ class RepartidorViewModel : ViewModel() {
     fun aceptarSolicitud(solicitud: SolicitudEfectivo, onAccepted: (String) -> Unit) {
         val currentUser = auth.currentUser ?: return
         val uid = currentUser.uid
-        val nombre = currentUser.displayName ?: currentUser.email?.split("@")?.get(0) ?: "Repartidor"
+        
+        _uiState.update { it.copy(isLoading = true) }
 
-        val updates = hashMapOf<String, Any>(
-            "estado" to "aceptado",
-            "repartidorId" to uid,
-            "repartidorNombre" to nombre,
-            "repartidorLatitud" to fallbackLat,
-            "repartidorLongitud" to fallbackLon,
-            "timestamp" to System.currentTimeMillis()
-        )
+        // Fetch real delivery name from Firestore
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { userDoc ->
+                val nombre = userDoc.getString("name") ?: currentUser.displayName ?: "Repartidor"
+                
+                val updates = hashMapOf<String, Any>(
+                    "estado" to "aceptado",
+                    "repartidorId" to uid,
+                    "repartidorNombre" to nombre,
+                    "repartidorLatitud" to fallbackLat,
+                    "repartidorLongitud" to fallbackLon,
+                    "timestamp" to System.currentTimeMillis()
+                )
 
-        db.collection("solicitudesEfectivo").document(solicitud.id)
-            .update(updates)
-            .addOnSuccessListener {
-                onAccepted(solicitud.id)
+                db.collection("solicitudesEfectivo").document(solicitud.id)
+                    .update(updates)
+                    .addOnSuccessListener {
+                        _uiState.update { it.copy(isLoading = false) }
+                        onAccepted(solicitud.id)
+                    }
+                    .addOnFailureListener { e ->
+                        _uiState.update { it.copy(isLoading = false, error = e.message) }
+                    }
             }
             .addOnFailureListener { e ->
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = "Error al obtener perfil") }
             }
     }
 

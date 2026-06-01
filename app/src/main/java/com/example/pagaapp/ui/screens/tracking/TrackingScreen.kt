@@ -15,6 +15,9 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.maps.android.compose.*
+import com.example.pagaapp.R
+import com.example.pagaapp.util.bitmapDescriptorFromResource
+
 
 @Composable
 fun TrackingScreen(
@@ -27,6 +30,14 @@ fun TrackingScreen(
         position = CameraPosition.fromLatLngZoom(uiState.userLocation, 15f)
     }
 
+    // Marcadores redimensionados para que no tapen la vista
+    val clienteIcon = remember(context) {
+        bitmapDescriptorFromResource(context, R.drawable.cliente, 80, 80)
+    }
+    val repartidorIcon = remember(context) {
+        bitmapDescriptorFromResource(context, R.drawable.repartidor, 80, 80)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
@@ -35,14 +46,14 @@ fun TrackingScreen(
         ) {
             // Marcador del Usuario
             Marker(
-                state = MarkerState(position = uiState.userLocation),
-                title = "Tu ubicación"
+                state = rememberMarkerState(position = uiState.userLocation),
+                title = "Tu ubicación",
+                icon = clienteIcon
             )
-
             // Marcadores de Lugares Cercanos
             uiState.nearbyPlaces.forEach { place ->
                 Marker(
-                    state = MarkerState(position = place.location),
+                    state = rememberMarkerState(position = place.location),
                     title = place.name,
                     snippet = place.distanceText,
                     onClick = {
@@ -55,10 +66,10 @@ fun TrackingScreen(
             // Marcadores de Repartidores Activos
             uiState.repartidoresActivos.forEach { repartidor ->
                 Marker(
-                    state = MarkerState(position = LatLng(repartidor.latitud, repartidor.longitud)),
+                    state = rememberMarkerState(position = LatLng(repartidor.latitud, repartidor.longitud)),
                     title = repartidor.nombre,
                     snippet = "Repartidor Activo",
-                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                    icon = repartidorIcon
                 )
             }
         }

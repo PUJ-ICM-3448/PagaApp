@@ -48,34 +48,30 @@ class RequestCashViewModel : ViewModel() {
 
         _uiState.update { it.copy(isLoading = true, error = null) }
 
-        // Intentar obtener la ubicación más precisa posible
-        fusedLocationClient?.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            ?.addOnSuccessListener { location ->
-                if (location != null) {
-                    crearSolicitud(currentUser.uid, currentUser.displayName, monto, location.latitude, location.longitude)
-                } else {
-                    // Si getCurrentLocation es null, intentar con lastLocation
-                    fusedLocationClient?.lastLocation?.addOnSuccessListener { lastLoc ->
-                        val lat = lastLoc?.latitude ?: fallbackLat
-                        val lon = lastLoc?.longitude ?: fallbackLon
-                        crearSolicitud(currentUser.uid, currentUser.displayName, monto, lat, lon)
+        // Fetch real user name from Firestore before creating request
+        db.collection("users").document(currentUser.uid).get()
+            .addOnSuccessListener { document ->
+                val realName = document.getString("name") ?: currentUser.displayName ?: "Usuario"
+                
+                // Get location and create request
+                fusedLocationClient?.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    ?.addOnSuccessListener { location ->
+                        val lat = location?.latitude ?: fallbackLat
+                        val lon = location?.longitude ?: fallbackLon
+                        crearSolicitud(currentUser.uid, realName, monto, lat, lon)
                     }?.addOnFailureListener {
-                        crearSolicitud(currentUser.uid, currentUser.displayName, monto, fallbackLat, fallbackLon)
+                        crearSolicitud(currentUser.uid, realName, monto, fallbackLat, fallbackLon)
                     }
-                }
-            }?.addOnFailureListener {
-                crearSolicitud(currentUser.uid, currentUser.displayName, monto, fallbackLat, fallbackLon)
-            } ?: run {
-                _uiState.update { it.copy(isLoading = false, error = "Cliente de ubicación no configurado") }
+            }
+            .addOnFailureListener {
+                _uiState.update { it.copy(isLoading = false, error = "Error al obtener datos del perfil") }
             }
     }
 
-    private fun crearSolicitud(uid: String, nombre: String?, monto: String, lat: Double, lon: Double) {
-        val clienteNombre = nombre ?: auth.currentUser?.email?.split("@")?.get(0) ?: "Cliente"
-        
+    private fun crearSolicitud(uid: String, nombre: String, monto: String, lat: Double, lon: Double) {
         val solicitud = hashMapOf(
             "clienteId" to uid,
-            "clienteNombre" to clienteNombre,
+            "clienteNombre" to nombre,
             "monto" to monto,
             "clienteLatitud" to lat,
             "clienteLongitud" to lon,
