@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.pagaapp.navigation.Routes
 
 @Composable
 fun ProfileScreen(
@@ -44,7 +45,14 @@ fun ProfileScreen(
         }
 
         item {
-            ProfileSettingsSection(profile)
+            ProfileSettingsSection(
+                profile = profile,
+                onSignOut = {
+                    navController.navigate(Routes.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         item {
