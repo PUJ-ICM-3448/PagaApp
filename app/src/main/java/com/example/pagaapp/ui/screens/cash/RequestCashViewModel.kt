@@ -1,7 +1,8 @@
 package com.example.pagaapp.ui.screens.cash
 
 import android.annotation.SuppressLint
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import com.google.firebase.auth.FirebaseAuth
@@ -11,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class RequestCashViewModel : ViewModel() {
+class RequestCashViewModel(application: Application) : AndroidViewModel(application) {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
     
@@ -20,7 +21,7 @@ class RequestCashViewModel : ViewModel() {
 
     private var fusedLocationClient: FusedLocationProviderClient? = null
 
-    // Fallback solo si la ubicación real falla completamente (Coordenadas Javeriana)
+    // Fallback coordinates (Javeriana) ONLY if real location fails completely
     private val fallbackLat = 4.6280
     private val fallbackLon = -74.0647
 
@@ -48,23 +49,34 @@ class RequestCashViewModel : ViewModel() {
 
         _uiState.update { it.copy(isLoading = true, error = null) }
 
-        // Fetch real user name from Firestore before creating request
+        // Fetch real user name from Firestore
         db.collection("users").document(currentUser.uid).get()
             .addOnSuccessListener { document ->
                 val realName = document.getString("name") ?: currentUser.displayName ?: "Usuario"
                 
-                // Get location and create request
+                // Use getCurrentLocation for higher accuracy on real device
                 fusedLocationClient?.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                     ?.addOnSuccessListener { location ->
-                        val lat = location?.latitude ?: fallbackLat
-                        val lon = location?.longitude ?: fallbackLon
-                        crearSolicitud(currentUser.uid, realName, monto, lat, lon)
+                        if (location != null) {
+                            crearSolicitud(currentUser.uid, realName, monto, location.latitude, location.longitude)
+                        } else {
+                            // Try last location as secondary fallback
+                            fusedLocationClient?.lastLocation?.addOnSuccessListener { lastLoc ->
+                                val lat = lastLoc?.latitude ?: fallbackLat
+                                val lon = lastLoc?.longitude ?: fallbackLon
+                                crearSolicitud(currentUser.uid, realName, monto, lat, lon)
+                            }?.addOnFailureListener {
+                                crearSolicitud(currentUser.uid, realName, monto, fallbackLat, fallbackLon)
+                            }
+                        }
                     }?.addOnFailureListener {
                         crearSolicitud(currentUser.uid, realName, monto, fallbackLat, fallbackLon)
+                    } ?: run {
+                        _uiState.update { it.copy(isLoading = false, error = "GPS no disponible") }
                     }
             }
             .addOnFailureListener {
-                _uiState.update { it.copy(isLoading = false, error = "Error al obtener datos del perfil") }
+                _uiState.update { it.copy(isLoading = false, error = "Error al obtener perfil") }
             }
     }
 

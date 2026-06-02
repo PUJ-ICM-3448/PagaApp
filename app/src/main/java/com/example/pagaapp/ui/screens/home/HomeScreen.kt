@@ -1,6 +1,6 @@
 package com.example.pagaapp.ui.screens.home
 
-
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
@@ -15,20 +15,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
-
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import com.example.pagaapp.ui.theme.PrimaryGreen
+import com.example.pagaapp.ui.theme.CardBackground
+import com.example.pagaapp.ui.theme.CashPointsGreen
+import com.example.pagaapp.ui.theme.CashDeliveryBlue
 import com.example.pagaapp.ui.theme.AppBackground
 import com.example.pagaapp.ui.theme.TextPrimary
 import com.example.pagaapp.ui.theme.TextSecondary
 import com.example.pagaapp.ui.theme.ExpenseRed
 import com.example.pagaapp.ui.theme.IncomeGreen
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.Alignment
-import com.example.pagaapp.ui.theme.PrimaryGreen
-import com.example.pagaapp.ui.theme.CardBackground
-import com.example.pagaapp.ui.theme.CashPointsGreen
-import com.example.pagaapp.ui.theme.CashDeliveryBlue
-import androidx.compose.ui.graphics.Color
 import com.example.pagaapp.navigation.Routes
 
 @Composable
@@ -37,8 +37,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     
-    // Mock debts for visual demo, but we should eventually fetch these too
     val debts = listOf(
         DebtItemData("MG", "Maria Garcia", "You owe", "-$45.50", false),
         DebtItemData("JL", "Juan Lopez", "Owes you", "+$28.00", true),
@@ -62,9 +62,20 @@ fun HomeScreen(
             item { 
                 HomeHeader(
                     initials = uiState.userInitials,
-                    name = uiState.userName
+                    name = uiState.userName,
+                    onNotifClick = { Toast.makeText(context, "Funcionalidad disponible próximamente", Toast.LENGTH_SHORT).show() }
                 ) 
             }
+            
+            if (uiState.countryCapital.isNotEmpty()) {
+                item {
+                    CountryInfoCard(
+                        capital = uiState.countryCapital,
+                        currency = uiState.countryCurrency
+                    )
+                }
+            }
+
             item { 
                 BalanceCard(
                     balance = uiState.balance,
@@ -72,7 +83,7 @@ fun HomeScreen(
                     owedToYou = uiState.owedToMe
                 ) 
             }
-            item { ActionButtonsRow() }
+            item { ActionButtonsRow(onAction = { Toast.makeText(context, "Funcionalidad disponible próximamente", Toast.LENGTH_SHORT).show() }) }
             item { QuickAccessCards(navController) }
             item {
                 Text(
@@ -84,14 +95,44 @@ fun HomeScreen(
             }
 
             items(debts) { debt ->
-                DebtCard(debt)
+                DebtCard(debt, onClick = { Toast.makeText(context, "Funcionalidad disponible próximamente", Toast.LENGTH_SHORT).show() })
             }
         }
     }
 }
 
 @Composable
-fun HomeHeader(initials: String, name: String) {
+fun CountryInfoCard(capital: String, currency: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PrimaryGreen.copy(alpha = 0.1f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("🇨🇴", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "Operando en Colombia",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = PrimaryGreen,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Sede: $capital | Moneda: $currency",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeHeader(initials: String, name: String, onNotifClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -107,8 +148,8 @@ fun HomeHeader(initials: String, name: String) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = initials,
-                        color = CardBackground,
+                        text = if (initials.isNotEmpty()) initials else "??",
+                        color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -124,7 +165,7 @@ fun HomeHeader(initials: String, name: String) {
                 )
 
                 Text(
-                    text = name,
+                    text = if (name.isNotEmpty()) name else "Usuario",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
@@ -133,7 +174,7 @@ fun HomeHeader(initials: String, name: String) {
         }
 
         IconButton(
-            onClick = { /* TODO */ },
+            onClick = onNotifClick,
             modifier = Modifier
                 .background(CardBackground, CircleShape)
                 .size(48.dp)
@@ -166,7 +207,7 @@ fun BalanceCard(balance: Double, owe: Double, owedToYou: Double) {
             )
 
             Text(
-                text = "$${balance}",
+                text = "$$balance",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = TextPrimary
@@ -183,7 +224,7 @@ fun BalanceCard(balance: Double, owe: Double, owedToYou: Double) {
                         color = TextSecondary
                     )
                     Text(
-                        text = "$${owe}",
+                        text = "$$owe",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = ExpenseRed
@@ -197,7 +238,7 @@ fun BalanceCard(balance: Double, owe: Double, owedToYou: Double) {
                         color = TextSecondary
                     )
                     Text(
-                        text = "$${owedToYou}",
+                        text = "$$owedToYou",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = IncomeGreen
@@ -209,13 +250,13 @@ fun BalanceCard(balance: Double, owe: Double, owedToYou: Double) {
 }
 
 @Composable
-fun ActionButtonsRow() {
+fun ActionButtonsRow(onAction: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Card(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).clickable { onAction() },
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = PrimaryGreen)
         ) {
@@ -234,7 +275,7 @@ fun ActionButtonsRow() {
         }
 
         Card(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).clickable { onAction() },
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             border = CardDefaults.outlinedCardBorder()
@@ -334,9 +375,9 @@ data class DebtItemData(
 )
 
 @Composable
-fun DebtCard(debt: DebtItemData) {
+fun DebtCard(debt: DebtItemData, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

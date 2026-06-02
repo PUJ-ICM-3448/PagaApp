@@ -1,5 +1,6 @@
 package com.example.pagaapp.ui.screens.repartidor
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.pagaapp.R
 import com.example.pagaapp.ui.theme.PrimaryGreen
 import com.example.pagaapp.ui.theme.AppBackground
 import com.example.pagaapp.ui.theme.CardBackground
@@ -73,11 +73,15 @@ fun DeliveryMapScreen(
             // Actualizar cámara para ajustar ambos puntos si están disponibles
             LaunchedEffect(clienteLocation, repartidorLocation) {
                 if (clienteLocation.latitude != 0.0 && repartidorLocation.latitude != 0.0) {
-                    val bounds = LatLngBounds.builder()
-                        .include(clienteLocation)
-                        .include(repartidorLocation)
-                        .build()
-                    cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 150))
+                    try {
+                        val bounds = LatLngBounds.builder()
+                            .include(clienteLocation)
+                            .include(repartidorLocation)
+                            .build()
+                        cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 150))
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
 
@@ -87,23 +91,27 @@ fun DeliveryMapScreen(
                     cameraPositionState = cameraPositionState,
                     uiSettings = MapUiSettings(zoomControlsEnabled = false)
                 ) {
+                    // Usar marcadores estándar para mayor claridad en demo
                     Marker(
                         state = rememberMarkerState(position = clienteLocation),
                         title = "Cliente: ${uiState.clienteNombre}",
-                        icon = BitmapDescriptorFactory.fromResource(R.drawable.cliente)
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
                     )
 
                     Marker(
                         state = rememberMarkerState(position = repartidorLocation),
                         title = "Tu ubicación",
-                        icon = BitmapDescriptorFactory.fromResource(R.drawable.repartidor)
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
                     )
 
                     if (uiState.estado == "aceptado" || uiState.estado == "en_camino") {
+                        val points = if (uiState.routePoints.isNotEmpty()) uiState.routePoints 
+                                     else listOf(repartidorLocation, clienteLocation)
+                        
                         Polyline(
-                            points = listOf(repartidorLocation, clienteLocation),
+                            points = points,
                             color = PrimaryGreen,
-                            width = 10f
+                            width = 12f
                         )
                     }
                 }
@@ -143,7 +151,7 @@ fun DeliveryMapScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
                             ) {
-                                Text("Marcar como EN CAMINO", fontWeight = FontWeight.Bold)
+                                Text("MARCAR EN CAMINO", fontWeight = FontWeight.Bold)
                             }
                         } else if (uiState.estado == "en_camino") {
                             Button(

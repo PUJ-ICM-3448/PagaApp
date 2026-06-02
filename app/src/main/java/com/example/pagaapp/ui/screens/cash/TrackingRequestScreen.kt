@@ -16,13 +16,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.pagaapp.R
 import com.example.pagaapp.ui.theme.PrimaryGreen
 import com.example.pagaapp.ui.theme.AppBackground
 import com.example.pagaapp.ui.theme.CardBackground
 import com.example.pagaapp.ui.theme.TextPrimary
 import com.example.pagaapp.ui.theme.TextSecondary
-import com.example.pagaapp.util.bitmapDescriptorFromResource
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -40,14 +38,6 @@ fun TrackingRequestScreen(
 
     LaunchedEffect(solicitudId) {
         viewModel.startTracking(solicitudId)
-    }
-
-    // Marcadores redimensionados para el seguimiento del pedido
-    val clienteIcon = remember(context) {
-        bitmapDescriptorFromResource(context, R.drawable.cliente, 80, 80)
-    }
-    val repartidorIcon = remember(context) {
-        bitmapDescriptorFromResource(context, R.drawable.repartidor, 80, 80)
     }
 
     Scaffold(
@@ -88,20 +78,23 @@ fun TrackingRequestScreen(
                     Marker(
                         state = rememberMarkerState(position = clienteLocation),
                         title = "Tu ubicación",
-                        icon = clienteIcon
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
                     )
 
                     if (uiState.estado == "aceptado" || uiState.estado == "en_camino") {
                         Marker(
                             state = rememberMarkerState(position = repartidorLocation),
                             title = "Repartidor: ${uiState.repartidorNombre}",
-                            icon = repartidorIcon
+                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
                         )
 
+                        val points = if (uiState.routePoints.isNotEmpty()) uiState.routePoints 
+                                     else listOf(repartidorLocation, clienteLocation)
+
                         Polyline(
-                            points = listOf(repartidorLocation, clienteLocation),
+                            points = points,
                             color = PrimaryGreen,
-                            width = 10f
+                            width = 12f
                         )
                     }
                 }

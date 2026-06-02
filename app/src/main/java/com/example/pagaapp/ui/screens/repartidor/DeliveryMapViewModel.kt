@@ -1,16 +1,22 @@
 package com.example.pagaapp.ui.screens.repartidor
 
 import android.annotation.SuppressLint
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.pagaapp.data.network.DirectionsRetrofitClient
+import com.example.pagaapp.util.decodePolyline
 import com.google.android.gms.location.*
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class DeliveryMapViewModel : ViewModel() {
+class DeliveryMapViewModel(application: Application) : AndroidViewModel(application) {
     private val db = FirebaseFirestore.getInstance()
+    
     private val _uiState = MutableStateFlow(DeliveryMapUiState())
     val uiState: StateFlow<DeliveryMapUiState> = _uiState.asStateFlow()
 
@@ -18,9 +24,10 @@ class DeliveryMapViewModel : ViewModel() {
     private var locationCallback: LocationCallback? = null
     private var solicitudId: String? = null
 
-    // Coordenadas de demo: Universidad Javeriana Bogotá
-    private val defaultLat = 4.6280
-    private val defaultLon = -74.0647
+    private val GOOGLE_MAPS_API_KEY = "AIzaSyAPXZetb9acvDrOrGcOUUOiCdir59np-Cw"
+
+    private val fallbackLat = 4.6156
+    private val fallbackLon = -74.0690
 
     fun setLocationClient(client: FusedLocationProviderClient) {
         fusedLocationClient = client
@@ -38,25 +45,48 @@ class DeliveryMapViewModel : ViewModel() {
                 }
 
                 if (snapshot != null && snapshot.exists()) {
-                    val clienteLat = snapshot.getDouble("clienteLatitud").let { if (it == null || it == 0.0) defaultLat else it }
-                    val clienteLon = snapshot.getDouble("clienteLongitud").let { if (it == null || it == 0.0) defaultLon else it }
-                    
+                    val clienteLat = snapshot.getDouble("clienteLatitud") ?: 0.0
+                    val clienteLon = snapshot.getDouble("clienteLongitud") ?: 0.0
+                    val repartidorLat = snapshot.getDouble("repartidorLatitud") ?: fallbackLat
+                    val repartidorLon = snapshot.getDouble("repartidorLongitud") ?: fallbackLon
+
                     _uiState.update {
                         it.copy(
                             clienteLatitud = clienteLat,
                             clienteLongitud = clienteLon,
-                            clienteNombre = snapshot.getString("clienteNombre") ?: "",
-                            monto = snapshot.getString("monto") ?: "",
+                            clienteNombre = snapshot.getString("clienteNombre") ?: "Cliente",
+                            monto = snapshot.getString("monto") ?: "0",
                             estado = snapshot.getString("estado") ?: "",
-                            repartidorLatitud = snapshot.getDouble("repartidorLatitud") ?: defaultLat,
-                            repartidorLongitud = snapshot.getDouble("repartidorLongitud") ?: defaultLon,
+                            repartidorLatitud = repartidorLat,
+                            repartidorLongitud = repartidorLon,
                             isLoading = false
                         )
+                    }
+                    
+                    if (clienteLat != 0.0 && repartidorLat != 0.0) {
+                        fetchRoute(repartidorLat, repartidorLon, clienteLat, clienteLon)
                     }
                 }
             }
         
         startLocationUpdates()
+    }
+
+    private fun fetchRoute(origLat: Double, origLon: Double, destLat: Double, destLon: Double) {
+        viewModelScope.launch {
+            try {
+                val origin = "$origLat,$origLon"
+                val destination = "$destLat,$destLon"
+                val response = DirectionsRetrofitClient.instance.getDirections(origin, destination, GOOGLE_MAPS_API_KEY)
+                if (response.routes.isNotEmpty()) {
+                    val points = response.routes[0].overview_polyline.points
+                    val decodedPath = decodePolyline(points)
+                    _uiState.update { it.copy(routePoints = decodedPath) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -68,8 +98,8 @@ class DeliveryMapViewModel : ViewModel() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let { location ->
-                    val lat = if (location.latitude != 0.0) location.latitude else defaultLat
-                    val lon = if (location.longitude != 0.0) location.longitude else defaultLon
+                    val lat = if (location.latitude != 0.0) location.latitude else fallbackLat
+                    val lon = if (location.longitude != 0.0) location.longitude else fallbackLon
                     
                     updateLocationInFirestore(lat, lon)
                 }

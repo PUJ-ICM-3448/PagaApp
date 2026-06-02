@@ -11,5 +11,6 @@ data class TrackingRequestUiState(
     val repartidorNombre: String = "",
     val monto: String = "",
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val routePoints: List<LatLng> = emptyList()
 )

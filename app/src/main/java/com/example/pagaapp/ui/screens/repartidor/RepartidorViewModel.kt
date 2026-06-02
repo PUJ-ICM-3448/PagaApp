@@ -1,6 +1,8 @@
 package com.example.pagaapp.ui.screens.repartidor
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import com.example.pagaapp.util.NotificationHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,14 +31,20 @@ data class RepartidorUiState(
     val error: String? = null
 )
 
-class RepartidorViewModel : ViewModel() {
+class RepartidorViewModel(application: Application) : AndroidViewModel(application) {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
+    private val notificationHelper = NotificationHelper(application)
+    
     private val _uiState = MutableStateFlow(RepartidorUiState())
     val uiState: StateFlow<RepartidorUiState> = _uiState.asStateFlow()
 
     private var pendingListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var activeListener: com.google.firebase.firestore.ListenerRegistration? = null
+
+    // Para evitar notificar múltiples veces la misma solicitud
+    private val notifiedRequests = mutableSetOf<String>()
+    private var isFirstLoad = true
 
     // Ubicación de fallback para el repartidor: Museo Nacional
     private val fallbackLat = 4.6156
@@ -60,6 +68,24 @@ class RepartidorViewModel : ViewModel() {
                 val lista = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(SolicitudEfectivo::class.java)?.copy(id = doc.id)
                 } ?: emptyList()
+
+                // Si es la primera carga, marcamos como notificadas las existentes para no inundar
+                if (isFirstLoad) {
+                    lista.forEach { notifiedRequests.add(it.id) }
+                    isFirstLoad = false
+                } else {
+                    // Notificar solo las nuevas que entren después
+                    lista.forEach { solicitud ->
+                        if (!notifiedRequests.contains(solicitud.id)) {
+                            notificationHelper.showNotification(
+                                "Nueva solicitud de efectivo",
+                                "${solicitud.clienteNombre} solicita $${solicitud.monto}"
+                            )
+                            notifiedRequests.add(solicitud.id)
+                        }
+                    }
+                }
+
                 _uiState.update { it.copy(solicitudesPendientes = lista) }
             }
 
@@ -98,6 +124,7 @@ class RepartidorViewModel : ViewModel() {
                 db.collection("solicitudesEfectivo").document(solicitud.id)
                     .update(updates)
                     .addOnSuccessListener {
+                        // No se auto-notifica al repartidor. El cliente recibirá la notificación.
                         _uiState.update { it.copy(isLoading = false) }
                         onAccepted(solicitud.id)
                     }
