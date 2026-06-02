@@ -33,12 +33,30 @@ fun TrackingRequestScreen(
     viewModel: TrackingRequestViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(solicitudId) {
         viewModel.startTracking(solicitudId)
     }
 
+    // Persona 3: Alertar al usuario cuando el estado cambie
+    LaunchedEffect(uiState.estado) {
+        val mensaje = when (uiState.estado) {
+            "aceptado" -> "¡Un repartidor ha aceptado tu pedido!"
+            "en_camino" -> "El repartidor ya va en camino."
+            "entregado" -> "¡Pedido entregado con éxito!"
+            else -> null
+        }
+        mensaje?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Seguimiento de Pedido", color = Color.White, fontWeight = FontWeight.Bold) },
@@ -67,11 +85,6 @@ fun TrackingRequestScreen(
                 position = CameraPosition.fromLatLngZoom(clienteLocation, 15f)
             }
 
-            // Actualizar cámara si el repartidor se mueve significativamente o al inicio
-            LaunchedEffect(uiState.repartidorLatitud, uiState.repartidorLongitud) {
-                 // Opcional: animar cámara para mostrar ambos si están lejos
-            }
-
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
@@ -93,15 +106,15 @@ fun TrackingRequestScreen(
                     }
                 }
 
-                // Panel flotante con info del pedido
+                // Panel flotante con info del pedido y ESTADOS CLAROS
                 Card(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
                         .fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    elevation = CardDefaults.cardElevation(8.dp)
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(10.dp)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Row(
@@ -110,48 +123,50 @@ fun TrackingRequestScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
+                                val estadoLabel = when (uiState.estado) {
+                                    "pendiente" -> "Esperando repartidor"
+                                    "aceptado" -> "Repartidor asignado"
+                                    "en_camino" -> "En camino"
+                                    "entregado" -> "Entregado"
+                                    else -> "Estado: ${uiState.estado}"
+                                }
+                                
                                 Text(
-                                    text = when (uiState.estado) {
-                                        "pendiente" -> "Esperando repartidor..."
-                                        "aceptado" -> "¡Pedido aceptado!"
-                                        "en_camino" -> "Repartidor en camino"
-                                        "entregado" -> "¡Pedido entregado!"
-                                        else -> "Estado: ${uiState.estado}"
-                                    },
+                                    text = estadoLabel,
                                     style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (uiState.estado == "entregado") PrimaryGreen else Color(0xFF1E293B)
                                 )
-                                Text("Monto solicitado: $${uiState.monto}", color = PrimaryGreen, fontWeight = FontWeight.Medium)
+                                Text("Pedido por: $${uiState.monto}", color = PrimaryGreen, fontWeight = FontWeight.Bold)
                             }
                             
                             if (uiState.estado == "en_camino") {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 3.dp,
+                                    modifier = Modifier.size(28.dp),
+                                    strokeWidth = 4.dp,
                                     color = PrimaryGreen
                                 )
                             }
                         }
                         
                         if (uiState.repartidorNombre.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider(color = Color(0xFFF1F5F9))
+                            Spacer(modifier = Modifier.height(16.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Surface(
-                                    modifier = Modifier.size(40.dp),
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = PrimaryGreen.copy(alpha = 0.1f)
+                                    modifier = Modifier.size(48.dp),
+                                    shape = RoundedCornerShape(24.dp),
+                                    color = Color(0xFFF1F5F9)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(uiState.repartidorNombre.take(1), fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                                        Text(uiState.repartidorNombre.take(1), fontWeight = FontWeight.Bold, color = PrimaryGreen, fontSize = 18.sp)
                                     }
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text("Tu repartidor", fontSize = 12.sp, color = TextSecondary)
-                                    Text(uiState.repartidorNombre, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                    Text("Repartidor asignado", fontSize = 12.sp, color = TextSecondary)
+                                    Text(uiState.repartidorNombre, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
                                 }
                             }
                         }

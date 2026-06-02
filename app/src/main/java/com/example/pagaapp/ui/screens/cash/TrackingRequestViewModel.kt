@@ -1,6 +1,7 @@
 package com.example.pagaapp.ui.screens.cash
 
 import androidx.lifecycle.ViewModel
+import com.example.pagaapp.utils.NotificationHelper
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,8 @@ class TrackingRequestViewModel : ViewModel() {
                 }
 
                 if (snapshot != null && snapshot.exists()) {
-                    val estado = snapshot.getString("estado") ?: "pendiente"
+                    val nuevoEstado = snapshot.getString("estado") ?: "pendiente"
+                    val estadoAnterior = _uiState.value.estado
                     
                     val clienteLat = snapshot.getDouble("clienteLatitud").let { if (it == null || it == 0.0) defaultLat else it }
                     val clienteLon = snapshot.getDouble("clienteLongitud").let { if (it == null || it == 0.0) defaultLon else it }
@@ -40,13 +42,18 @@ class TrackingRequestViewModel : ViewModel() {
                     val repartidorNombre = snapshot.getString("repartidorNombre") ?: ""
                     val monto = snapshot.getString("monto") ?: ""
 
+                    // Persona 3: Notificaciones basadas en cambio de estado
+                    if (nuevoEstado != estadoAnterior) {
+                        enviarNotificacionEstado(nuevoEstado, repartidorNombre)
+                    }
+
                     _uiState.update {
                         it.copy(
                             clienteLatitud = clienteLat,
                             clienteLongitud = clienteLon,
                             repartidorLatitud = repartidorLat,
                             repartidorLongitud = repartidorLon,
-                            estado = estado,
+                            estado = nuevoEstado,
                             repartidorNombre = repartidorNombre,
                             monto = monto,
                             isLoading = false
@@ -54,6 +61,16 @@ class TrackingRequestViewModel : ViewModel() {
                     }
                 }
             }
+    }
+
+    private fun enviarNotificacionEstado(estado: String, repartidor: String) {
+        val (titulo, mensaje) = when (estado) {
+            "aceptado" -> "¡Pedido Aceptado!" to "El repartidor $repartidor ha aceptado tu solicitud."
+            "en_camino" -> "Pedido en Camino" to "$repartidor va en camino a tu ubicación."
+            "entregado" -> "Pedido Entregado" to "¡Tu efectivo ha sido entregado con éxito!"
+            else -> return
+        }
+        NotificationHelper.addNotification(titulo, mensaje)
     }
 
     override fun onCleared() {

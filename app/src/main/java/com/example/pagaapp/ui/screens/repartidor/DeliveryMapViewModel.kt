@@ -1,120 +1,144 @@
 package com.example.pagaapp.ui.screens.repartidor
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import androidx.lifecycle.ViewModel
-import com.google.android.gms.location.*
+import com.example.pagaapp.utils.NotificationHelper
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.Priority
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.UUID
 
 class DeliveryMapViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
     private val _uiState = MutableStateFlow(DeliveryMapUiState())
     val uiState: StateFlow<DeliveryMapUiState> = _uiState.asStateFlow()
 
+    private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
     private var fusedLocationClient: FusedLocationProviderClient? = null
-    private var locationCallback: LocationCallback? = null
-    private var solicitudId: String? = null
-
-    // Coordenadas de demo: Universidad Javeriana Bogotá
-    private val defaultLat = 4.6280
-    private val defaultLon = -74.0647
+    private var currentSolicitudId: String? = null
 
     fun setLocationClient(client: FusedLocationProviderClient) {
         fusedLocationClient = client
     }
 
-    fun startTracking(id: String) {
-        this.solicitudId = id
-        _uiState.update { it.copy(isLoading = true) }
+    fun setEvidenceUri(uri: Uri?) {
+        _uiState.update { it.copy(evidenceUri = uri) }
+    }
 
-        db.collection("solicitudesEfectivo").document(id)
+    fun startTracking(solicitudId: String) {
+        currentSolicitudId = solicitudId
+        
+        obtenerUbicacionActual()
+
+        listenerRegistration = db.collection("solicitudesEfectivo").document(solicitudId)
             .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    _uiState.update { it.copy(error = e.message, isLoading = false) }
-                    return@addSnapshotListener
-                }
+                if (e != null || snapshot == null || !snapshot.exists()) return@addSnapshotListener
 
-                if (snapshot != null && snapshot.exists()) {
-                    val clienteLat = snapshot.getDouble("clienteLatitud").let { if (it == null || it == 0.0) defaultLat else it }
-                    val clienteLon = snapshot.getDouble("clienteLongitud").let { if (it == null || it == 0.0) defaultLon else it }
-                    
-                    _uiState.update {
-                        it.copy(
-                            clienteLatitud = clienteLat,
-                            clienteLongitud = clienteLon,
-                            clienteNombre = snapshot.getString("clienteNombre") ?: "",
-                            monto = snapshot.getString("monto") ?: "",
-                            estado = snapshot.getString("estado") ?: "",
-                            repartidorLatitud = snapshot.getDouble("repartidorLatitud") ?: defaultLat,
-                            repartidorLongitud = snapshot.getDouble("repartidorLongitud") ?: defaultLon,
-                            isLoading = false
-                        )
-                    }
+                val estado = snapshot.getString("estado") ?: ""
+                val clienteLat = snapshot.getDouble("clienteLatitud") ?: 0.0
+                val clienteLon = snapshot.getDouble("clienteLongitud") ?: 0.0
+                val nombreCliente = snapshot.getString("clienteNombre") ?: "Cliente"
+                val monto = snapshot.getString("monto") ?: ""
+                val repLat = snapshot.getDouble("repartidorLatitud") ?: 0.0
+                val repLon = snapshot.getDouble("repartidorLongitud") ?: 0.0
+
+                _uiState.update {
+                    it.copy(
+                        estado = estado,
+                        clienteLatitud = clienteLat,
+                        clienteLongitud = clienteLon,
+                        clienteNombre = nombreCliente,
+                        monto = monto,
+                        repartidorLatitud = if (it.repartidorLatitud == 0.0) repLat else it.repartidorLatitud,
+                        repartidorLongitud = if (it.repartidorLongitud == 0.0) repLon else it.repartidorLongitud,
+                        isLoading = false
+                    )
                 }
             }
-        
-        startLocationUpdates()
     }
 
     @SuppressLint("MissingPermission")
-    private fun startLocationUpdates() {
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
-            .setMinUpdateIntervalMillis(2000)
-            .build()
-
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let { location ->
-                    val lat = if (location.latitude != 0.0) location.latitude else defaultLat
-                    val lon = if (location.longitude != 0.0) location.longitude else defaultLon
-                    
-                    updateLocationInFirestore(lat, lon)
+    private fun obtenerUbicacionActual() {
+        fusedLocationClient?.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            ?.addOnSuccessListener { location ->
+                if (location != null) {
+                    _uiState.update {
+                        it.copy(
+                            repartidorLatitud = location.latitude,
+                            repartidorLongitud = location.longitude
+                        )
+                    }
+                    actualizarUbicacionEnFirebase(location.latitude, location.longitude)
                 }
             }
-        }
-
-        fusedLocationClient?.requestLocationUpdates(request, locationCallback!!, null)
     }
 
-    private fun updateLocationInFirestore(lat: Double, lon: Double) {
-        val id = solicitudId ?: return
+    private fun actualizarUbicacionEnFirebase(lat: Double, lon: Double) {
+        val id = currentSolicitudId ?: return
         db.collection("solicitudesEfectivo").document(id)
             .update(
-                mapOf(
-                    "repartidorLatitud" to lat,
-                    "repartidorLongitud" to lon,
-                    "timestamp" to System.currentTimeMillis()
-                )
+                "repartidorLatitud", lat,
+                "repartidorLongitud", lon
             )
     }
 
     fun actualizarEstado(nuevoEstado: String) {
-        val id = solicitudId ?: return
+        val id = currentSolicitudId ?: return
         db.collection("solicitudesEfectivo").document(id)
             .update("estado", nuevoEstado)
-    }
-
-    fun finalizarPedido(onFinished: () -> Unit) {
-        val id = solicitudId ?: return
-        db.collection("solicitudesEfectivo").document(id)
-            .update("estado", "entregado")
             .addOnSuccessListener {
-                stopLocationUpdates()
-                onFinished()
+                val mensaje = when(nuevoEstado) {
+                    "en_camino" -> "Has iniciado la entrega. ¡Conduce con cuidado!"
+                    "entregado" -> "Entrega finalizada con éxito."
+                    else -> "Estado actualizado a $nuevoEstado"
+                }
+                NotificationHelper.addNotification("Actualización de Entrega", mensaje)
             }
     }
 
-    private fun stopLocationUpdates() {
-        locationCallback?.let {
-            fusedLocationClient?.removeLocationUpdates(it)
+    fun finalizarPedidoConEvidencia(onSuccess: () -> Unit) {
+        val id = currentSolicitudId ?: return
+        val uri = _uiState.value.evidenceUri
+
+        if (uri == null) {
+            _uiState.update { it.copy(error = "Se requiere una foto como evidencia de entrega") }
+            return
         }
+
+        _uiState.update { it.copy(isUploading = true) }
+
+        val storageRef = storage.reference.child("evidencias_entrega/${id}_${UUID.randomUUID()}.jpg")
+        
+        storageRef.putFile(uri)
+            .addOnSuccessListener {
+                storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                    db.collection("solicitudesEfectivo").document(id)
+                        .update(
+                            "estado", "entregado",
+                            "evidenciaUrl", downloadUrl.toString(),
+                            "fechaEntrega", System.currentTimeMillis()
+                        )
+                        .addOnSuccessListener {
+                            _uiState.update { it.copy(isUploading = false) }
+                            NotificationHelper.addNotification("Entrega Finalizada", "Has entregado el efectivo y subido la evidencia.")
+                            onSuccess()
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                _uiState.update { it.copy(isUploading = false, error = "Error al subir evidencia: ${e.message}") }
+            }
     }
 
     override fun onCleared() {
         super.onCleared()
-        stopLocationUpdates()
+        listenerRegistration?.remove()
     }
 }

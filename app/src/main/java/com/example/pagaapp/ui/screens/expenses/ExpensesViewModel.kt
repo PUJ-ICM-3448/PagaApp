@@ -1,10 +1,12 @@
 package com.example.pagaapp.ui.screens.expenses
 
+import android.net.Uri
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 class ExpensesViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ExpensesUiState(
@@ -84,4 +86,8 @@ class ExpensesViewModel : ViewModel() {
         )
     ))
     val uiState: StateFlow<ExpensesUiState> = _uiState.asStateFlow()
+
+    fun setEvidenceUri(uri: Uri?) {
+        _uiState.update { it.copy(evidenceUri = uri) }
+    }
 }

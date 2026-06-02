@@ -1,429 +1,236 @@
 package com.example.pagaapp.ui.screens.home
 
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
-
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-
-import com.example.pagaapp.ui.theme.AppBackground
-import com.example.pagaapp.ui.theme.TextPrimary
-import com.example.pagaapp.ui.theme.TextSecondary
-import com.example.pagaapp.ui.theme.ExpenseRed
-import com.example.pagaapp.ui.theme.IncomeGreen
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-
-import androidx.compose.foundation.shape.CircleShape
-
-import androidx.compose.material3.CardDefaults
-
-import androidx.compose.ui.Alignment
-
-import com.example.pagaapp.ui.theme.PrimaryGreen
-import com.example.pagaapp.ui.theme.CardBackground
-import com.example.pagaapp.ui.theme.CashPointsGreen
-import com.example.pagaapp.ui.theme.CashDeliveryBlue
-import androidx.compose.ui.graphics.Color
+import androidx.navigation.NavController
 import com.example.pagaapp.navigation.Routes
+import com.example.pagaapp.ui.theme.*
+import com.example.pagaapp.utils.NotificationHelper
+import com.example.pagaapp.utils.AppNotification
 
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel = viewModel()
-)
+) {
+    val notifications by NotificationHelper.notifications.collectAsState()
+    var showNotificationSheet by remember { mutableStateOf(false) }
 
-{
     val debts = listOf(
-        DebtItemData(
-            initials = "MG",
-            name = "Maria Garcia",
-            subtitle = "You owe",
-            amount = "-$45.50",
-            isPositive = false
-        ),
-        DebtItemData(
-            initials = "JL",
-            name = "Juan Lopez",
-            subtitle = "Owes you",
-            amount = "+$28.00",
-            isPositive = true
-        ),
-        DebtItemData(
-            initials = "SM",
-            name = "Sofia Martinez",
-            subtitle = "You owe",
-            amount = "-$15.75",
-            isPositive = false
-        )
+        DebtItemData("MG", "Maria Garcia", "You owe", "-$45.50", false),
+        DebtItemData("JL", "Juan Lopez", "Owes you", "+$28.00", true),
+        DebtItemData("SM", "Sofia Martinez", "You owe", "-$15.75", false)
     )
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppBackground)
-            .statusBarsPadding()
-            .navigationBarsPadding(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item { HomeHeader() }
-        item {  BalanceCard() }
-       item { ActionButtonsRow() }
-        item {QuickAccessCards(navController) }
-        item {
-            Text(
-                text = "Pending Debts",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
+    Scaffold(
+        containerColor = AppBackground,
+        topBar = {
+            HomeHeader(
+                unreadCount = notifications.count { !it.isRead },
+                onNotificationsClick = { 
+                    showNotificationSheet = true 
+                    NotificationHelper.markAsRead()
+                }
             )
         }
-
-        items(debts) { debt ->
-            DebtCard(debt)
-        }
-
-
-
-    }
-}
-
-@Composable
-fun HomeHeader() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Card(
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = PrimaryGreen
-                )
-            ) {
-                Box(
-                    modifier = Modifier.padding(16.dp),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    Text(
-                        text = "CR",
-                        color = CardBackground,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column {
+            item { BalanceCard() }
+            item { ActionButtonsRow() }
+            item { QuickAccessCards(navController) }
+            item {
                 Text(
-                    text = "Welcome back",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-
-                Text(
-                    text = "Carlos Rodriguez",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Pending Debts",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
             }
+            items(debts) { debt ->
+                DebtCard(debt)
+            }
         }
 
-        IconButton(
-            onClick = { /* TODO */ },
-            modifier = Modifier
-                .background(CardBackground, CircleShape)
-                .size(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = "Notifications",
-                tint = PrimaryGreen
-            )
+        if (showNotificationSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showNotificationSheet = false },
+                containerColor = Color.White
+            ) {
+                NotificationSheetContent(notifications)
+            }
         }
     }
 }
+
+@Composable
+fun NotificationSheetContent(notifications: List<AppNotification>) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+        Text(
+            "Notificaciones",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(16.dp)
+        )
+        if (notifications.isEmpty()) {
+            Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.NotificationsNone, null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
+                    Text("No tienes notificaciones", color = Color.Gray)
+                }
+            }
+        } else {
+            LazyColumn {
+                items(notifications) { notification ->
+                    ListItem(
+                        headlineContent = { Text(notification.title, fontWeight = FontWeight.Bold) },
+                        supportingContent = { Text(notification.message) },
+                        trailingContent = { Text(notification.timestamp, fontSize = 12.sp, color = Color.Gray) },
+                        leadingContent = {
+                            Surface(shape = CircleShape, color = PrimaryGreen.copy(0.1f)) {
+                                Icon(Icons.Default.Notifications, null, modifier = Modifier.padding(8.dp), tint = PrimaryGreen)
+                            }
+                        }
+                    )
+                    HorizontalDivider(color = Color.LightGray.copy(0.3f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeHeader(unreadCount: Int, onNotificationsClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Card(shape = CircleShape, colors = CardDefaults.cardColors(containerColor = PrimaryGreen)) {
+                Box(Modifier.padding(16.dp)) { Text("CR", color = Color.White, fontWeight = FontWeight.Bold) }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text("Welcome back", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text("Carlos Rodriguez", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+            }
+        }
+
+        BadgedBox(
+            badge = { if (unreadCount > 0) Badge { Text(unreadCount.toString()) } }
+        ) {
+            IconButton(
+                onClick = onNotificationsClick,
+                modifier = Modifier.background(CardBackground, CircleShape).size(48.dp)
+            ) {
+                Icon(Icons.Default.Notifications, "Notifications", tint = PrimaryGreen)
+            }
+        }
+    }
+}
+
+@Composable
+fun BalanceCard() {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("Your Balance", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Text("$152.75", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("You owe", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("$89.25", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ExpenseRed)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Owed to you", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("$242.00", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = IncomeGreen)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun ActionButtonsRow() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Card(
-            modifier = Modifier.weight(1f),
-            colors = CardDefaults.cardColors(
-                containerColor = PrimaryGreen
-            )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "+  Add Expense",
-                    color = CardBackground,
-                    fontWeight = FontWeight.Bold
-                )
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = PrimaryGreen)) {
+            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                Text("+  Add Expense", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
-
-        Card(
-            modifier = Modifier.weight(1f),
-            colors = CardDefaults.cardColors(
-                containerColor = CardBackground
-            )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "✈  Pay Debt",
-                    color = PrimaryGreen,
-                    fontWeight = FontWeight.Medium
-                )
+        Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = CardBackground)) {
+            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                Text("✈  Pay Debt", color = PrimaryGreen, fontWeight = FontWeight.Medium)
             }
         }
     }
 }
-@Composable
-fun BalanceCard(){
 
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Your Balance",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-
-                Text(
-                    text = "$152.75",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "You owe",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "$89.25",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = ExpenseRed
-                        )
-                    }
-
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Owed to you",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "$242.00",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = IncomeGreen
-                        )
-                    }
-                }
-            }
-        }
-    }
 @Composable
 fun QuickAccessCards(navController: NavController) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        QuickCard(
-            title = "Cash Points",
-            subtitle = "Find nearby",
-            backgroundColor = CashPointsGreen,
-            modifier = Modifier.weight(1f),
-            onClick = { navController.navigate(Routes.Location.route) }
-        )
-
-        QuickCard(
-            title = "Cash Delivery",
-            subtitle = "Request now",
-            backgroundColor = CashDeliveryBlue,
-            modifier = Modifier.weight(1f),
-            onClick = { navController.navigate(Routes.RequestCash.route) }
-        )
-    }
-}
-
-
-@Composable
-fun QuickCard(
-    title: String,
-    subtitle: String,
-    backgroundColor: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Card(
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = PrimaryGreen
-                )
-
-            ) {
-                Box(
-                    modifier = Modifier.padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("●")
-                }
-            }
-
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall
-            )
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        QuickCard("Cash Points", "Find nearby", CashPointsGreen, Modifier.weight(1f)) {
+            navController.navigate(Routes.Location.route)
+        }
+        QuickCard("Cash Delivery", "Request now", CashDeliveryBlue, Modifier.weight(1f)) {
+            navController.navigate(Routes.RequestCash.route)
         }
     }
 }
 
-data class DebtItemData(
-    val initials: String,
-    val name: String,
-    val subtitle: String,
-    val amount: String,
-    val isPositive: Boolean
-)
+@Composable
+fun QuickCard(title: String, subtitle: String, backgroundColor: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(modifier = modifier.clickable(onClick = onClick), colors = CardDefaults.cardColors(containerColor = backgroundColor)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(shape = CircleShape, colors = CardDefaults.cardColors(containerColor = PrimaryGreen)) {
+                Box(Modifier.padding(12.dp)) { Text("●", color = Color.White) }
+            }
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+data class DebtItemData(val initials: String, val name: String, val subtitle: String, val amount: String, val isPositive: Boolean)
+
 @Composable
 fun DebtCard(debt: DebtItemData) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = CardBackground
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Card(
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = PrimaryGreen
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier.padding(14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = debt.initials,
-                            color = CardBackground,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardBackground)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Card(shape = CircleShape, colors = CardDefaults.cardColors(containerColor = PrimaryGreen)) {
+                    Box(Modifier.padding(14.dp)) { Text(debt.initials, color = Color.White, fontWeight = FontWeight.Bold) }
                 }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
+                Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(
-                        text = debt.name,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = debt.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
+                    Text(debt.name, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(debt.subtitle, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
             }
-
-            Text(
-                text = debt.amount,
-                color = if (debt.isPositive) IncomeGreen else ExpenseRed,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text(debt.amount, color = if (debt.isPositive) IncomeGreen else ExpenseRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

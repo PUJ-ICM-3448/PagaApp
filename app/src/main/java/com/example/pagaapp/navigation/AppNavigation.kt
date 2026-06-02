@@ -93,7 +93,8 @@ fun AppNavigation() {
             }
 
             composable(Routes.Tracking.route) {
-                TrackingScreen()
+                // Corrección: onBack es un parámetro obligatorio para TrackingScreen
+                TrackingScreen(onBack = { navController.popBackStack() }, showBack = true)
             }
 
             composable(Routes.Profile.route) {

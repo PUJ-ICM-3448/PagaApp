@@ -1,5 +1,6 @@
 package com.example.pagaapp.ui.screens.expenses
 
+import android.net.Uri
 import androidx.compose.ui.graphics.Color
 
 data class DebtItem(
@@ -19,7 +20,9 @@ enum class DebtStatus {
 
 data class ExpensesUiState(
     val youOweList: List<DebtItem> = emptyList(),
-    val owedToYouList: List<DebtItem> = emptyList()
+    val owedToYouList: List<DebtItem> = emptyList(),
+    val evidenceUri: Uri? = null,
+    val isUploading: Boolean = false
 ) {
     val totalYouOwe: Double = youOweList.sumOf { it.amount }
     val totalOwedToYou: Double = owedToYouList.sumOf { it.amount }
