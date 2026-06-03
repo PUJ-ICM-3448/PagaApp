@@ -21,9 +21,11 @@ import com.example.pagaapp.ui.theme.AppBackground
 import com.example.pagaapp.ui.theme.CardBackground
 import com.example.pagaapp.ui.theme.TextPrimary
 import com.example.pagaapp.ui.theme.TextSecondary
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,9 +66,31 @@ fun TrackingRequestScreen(
         } else {
             val clienteLocation = LatLng(uiState.clienteLatitud, uiState.clienteLongitud)
             val repartidorLocation = LatLng(uiState.repartidorLatitud, uiState.repartidorLongitud)
-            
+
             val cameraPositionState = rememberCameraPositionState {
                 position = CameraPosition.fromLatLngZoom(clienteLocation, 15f)
+            }
+
+// Marcador del repartidor con estado separado para que se mueva en tiempo real
+            val repartidorMarkerState = rememberMarkerState(position = repartidorLocation)
+            LaunchedEffect(repartidorLocation) {
+                repartidorMarkerState.position = repartidorLocation
+            }
+
+// Mover cámara para mostrar ambos puntos cuando el repartidor se mueve
+            LaunchedEffect(repartidorLocation) {
+                if ((uiState.estado == "aceptado" || uiState.estado == "en_camino")
+                    && repartidorLocation.latitude != 0.0
+                    && clienteLocation.latitude != 0.0
+                ) {
+                    try {
+                        val bounds = LatLngBounds.builder()
+                            .include(clienteLocation)
+                            .include(repartidorLocation)
+                            .build()
+                        cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 150))
+                    } catch (e: Exception) { /* ignorar */ }
+                }
             }
 
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -83,13 +107,13 @@ fun TrackingRequestScreen(
 
                     if (uiState.estado == "aceptado" || uiState.estado == "en_camino") {
                         Marker(
-                            state = rememberMarkerState(position = repartidorLocation),
+                            state = repartidorMarkerState,  // <-- usa el estado separado
                             title = "Repartidor: ${uiState.repartidorNombre}",
                             icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
                         )
 
-                        val points = if (uiState.routePoints.isNotEmpty()) uiState.routePoints 
-                                     else listOf(repartidorLocation, clienteLocation)
+                        val points = if (uiState.routePoints.isNotEmpty()) uiState.routePoints
+                        else listOf(repartidorLocation, clienteLocation)
 
                         Polyline(
                             points = points,

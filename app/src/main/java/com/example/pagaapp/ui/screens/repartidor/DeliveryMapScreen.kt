@@ -116,6 +116,27 @@ fun DeliveryMapScreen(
                     }
                 }
 
+                // Botón de simulación flotante
+                Box(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    Button(
+                        onClick = { viewModel.toggleSimulation() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (uiState.isSimulating) Color.Red else Color.Blue
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            if (uiState.isSimulating) "DETENER SIMULACIÓN" else "SIMULAR MOVIMIENTO",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
                 // Panel inferior con detalles
                 Card(
                     modifier = Modifier

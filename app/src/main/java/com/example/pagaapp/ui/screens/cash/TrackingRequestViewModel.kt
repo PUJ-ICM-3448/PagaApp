@@ -54,9 +54,9 @@ class TrackingRequestViewModel(application: Application) : AndroidViewModel(appl
 
                     val clienteLat = snapshot.getDouble("clienteLatitud").let { if (it == null || it == 0.0) defaultLat else it }
                     val clienteLon = snapshot.getDouble("clienteLongitud").let { if (it == null || it == 0.0) defaultLon else it }
-                    
-                    val repartidorLat = snapshot.getDouble("repartidorLatitud").let { if (it == null || it == 0.0) defaultLat else it }
-                    val repartidorLon = snapshot.getDouble("repartidorLongitud").let { if (it == null || it == 0.0) defaultLon else it }
+
+                    val repartidorLat = snapshot.getDouble("repartidorLatitud") ?: 0.0
+                    val repartidorLon = snapshot.getDouble("repartidorLongitud") ?: 0.0
 
                     val repartidorNombre = snapshot.getString("repartidorNombre") ?: ""
                     val monto = snapshot.getString("monto") ?: ""
@@ -75,7 +75,8 @@ class TrackingRequestViewModel(application: Application) : AndroidViewModel(appl
                     }
 
                     // Fetch real route if delivery is active
-                    if ((estado == "aceptado" || estado == "en_camino") && repartidorLat != 0.0) {
+                    if ((estado == "aceptado" || estado == "en_camino")
+                        && repartidorLat != 0.0 && repartidorLon != 0.0) {
                         fetchRoute(repartidorLat, repartidorLon, clienteLat, clienteLon)
                     }
                 }
