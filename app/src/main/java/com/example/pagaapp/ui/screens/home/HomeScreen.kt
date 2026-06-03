@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import com.example.pagaapp.ui.theme.PrimaryGreen
 import com.example.pagaapp.ui.theme.CardBackground
 import com.example.pagaapp.ui.theme.CashPointsGreen
@@ -85,6 +88,12 @@ fun HomeScreen(
             }
             item { ActionButtonsRow(onAction = { Toast.makeText(context, "Funcionalidad disponible próximamente", Toast.LENGTH_SHORT).show() }) }
             item { QuickAccessCards(navController) }
+            
+            // Hardware/Sensors shortcut for Rubric
+            item {
+                HardwareStatusShortcut(onClick = { navController.navigate(Routes.Sensors.route) })
+            }
+
             item {
                 Text(
                     text = "Pending Debts",
@@ -97,6 +106,57 @@ fun HomeScreen(
             items(debts) { debt ->
                 DebtCard(debt, onClick = { Toast.makeText(context, "Funcionalidad disponible próximamente", Toast.LENGTH_SHORT).show() })
             }
+        }
+    }
+}
+
+@Composable
+fun HardwareStatusShortcut(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = PrimaryGreen.copy(alpha = 0.1f),
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Sensors,
+                        contentDescription = null,
+                        tint = PrimaryGreen
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Sensores de Hardware",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "Monitoreo de luz y movimiento",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = TextSecondary
+            )
         }
     }
 }
