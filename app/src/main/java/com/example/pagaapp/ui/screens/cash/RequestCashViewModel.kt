@@ -21,9 +21,14 @@ class RequestCashViewModel(application: Application) : AndroidViewModel(applicat
 
     private var fusedLocationClient: FusedLocationProviderClient? = null
 
-    // Fallback coordinates (Javeriana) ONLY if real location fails completely
-    private val fallbackLat = 4.6280
-    private val fallbackLon = -74.0647
+    private fun errorSinUbicacion() {
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                error = "No se pudo obtener tu ubicación. Activa el GPS e inténtalo de nuevo."
+            )
+        }
+    }
 
     fun onMontoChange(monto: String) {
         _uiState.update { it.copy(monto = monto) }
@@ -60,17 +65,19 @@ class RequestCashViewModel(application: Application) : AndroidViewModel(applicat
                         if (location != null) {
                             crearSolicitud(currentUser.uid, realName, monto, location.latitude, location.longitude)
                         } else {
-                            // Try last location as secondary fallback
+                            // Reintento con la última ubicación conocida (también real)
                             fusedLocationClient?.lastLocation?.addOnSuccessListener { lastLoc ->
-                                val lat = lastLoc?.latitude ?: fallbackLat
-                                val lon = lastLoc?.longitude ?: fallbackLon
-                                crearSolicitud(currentUser.uid, realName, monto, lat, lon)
+                                if (lastLoc != null) {
+                                    crearSolicitud(currentUser.uid, realName, monto, lastLoc.latitude, lastLoc.longitude)
+                                } else {
+                                    errorSinUbicacion()
+                                }
                             }?.addOnFailureListener {
-                                crearSolicitud(currentUser.uid, realName, monto, fallbackLat, fallbackLon)
+                                errorSinUbicacion()
                             }
                         }
                     }?.addOnFailureListener {
-                        crearSolicitud(currentUser.uid, realName, monto, fallbackLat, fallbackLon)
+                        errorSinUbicacion()
                     } ?: run {
                         _uiState.update { it.copy(isLoading = false, error = "GPS no disponible") }
                     }

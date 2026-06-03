@@ -1,6 +1,11 @@
 package com.example.pagaapp.ui.screens.repartidor
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,9 +45,46 @@ fun DeliveryMapScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
+    // Inicia el tracking (cliente de ubicación + Firestore) una vez tenemos el permiso
+    fun iniciarTracking() {
         viewModel.setLocationClient(LocationServices.getFusedLocationProviderClient(context))
         viewModel.startTracking(solicitudId)
+    }
+
+    // Lanzador para solicitar el permiso de ubicación en tiempo de ejecución
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permisos ->
+        val concedido = permisos[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permisos[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (concedido) {
+            iniciarTracking()
+        } else {
+            Toast.makeText(
+                context,
+                "Se necesita permiso de ubicación para mostrar tu posición real en el mapa.",
+                Toast.LENGTH_LONG
+            ).show()
+            // Inicia el tracking igualmente para escuchar Firestore (sin GPS propio)
+            viewModel.startTracking(solicitudId)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val yaConcedido = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (yaConcedido) {
+            iniciarTracking()
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
     }
 
     Scaffold(
@@ -65,9 +107,14 @@ fun DeliveryMapScreen(
         } else {
             val clienteLocation = LatLng(uiState.clienteLatitud, uiState.clienteLongitud)
             val repartidorLocation = LatLng(uiState.repartidorLatitud, uiState.repartidorLongitud)
-            
+
+            val repartidorDisponible = uiState.repartidorLatitud != 0.0 || uiState.repartidorLongitud != 0.0
+            val clienteDisponible = uiState.clienteLatitud != 0.0 || uiState.clienteLongitud != 0.0
+
+            // Centro inicial: ubicación del repartidor si ya existe, si no la del cliente
+            val centroInicial = if (repartidorDisponible) repartidorLocation else clienteLocation
             val cameraPositionState = rememberCameraPositionState {
-                position = CameraPosition.fromLatLngZoom(repartidorLocation, 15f)
+                position = CameraPosition.fromLatLngZoom(centroInicial, 15f)
             }
 
             // Actualizar cámara para ajustar ambos puntos si están disponibles
@@ -91,20 +138,24 @@ fun DeliveryMapScreen(
                     cameraPositionState = cameraPositionState,
                     uiSettings = MapUiSettings(zoomControlsEnabled = false)
                 ) {
-                    // Usar marcadores estándar para mayor claridad en demo
-                    Marker(
-                        state = rememberMarkerState(position = clienteLocation),
-                        title = "Cliente: ${uiState.clienteNombre}",
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
-                    )
+                    if (clienteDisponible) {
+                        Marker(
+                            state = rememberMarkerState(position = clienteLocation),
+                            title = "Cliente: ${uiState.clienteNombre}",
+                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                        )
+                    }
 
-                    Marker(
-                        state = rememberMarkerState(position = repartidorLocation),
-                        title = "Tu ubicación",
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-                    )
+                    if (repartidorDisponible) {
+                        Marker(
+                            state = rememberMarkerState(position = repartidorLocation),
+                            title = "Tu ubicación",
+                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                        )
+                    }
 
-                    if (uiState.estado == "aceptado" || uiState.estado == "en_camino") {
+                    if (repartidorDisponible && clienteDisponible &&
+                        (uiState.estado == "aceptado" || uiState.estado == "en_camino")) {
                         val points = if (uiState.routePoints.isNotEmpty()) uiState.routePoints 
                                      else listOf(repartidorLocation, clienteLocation)
                         
@@ -116,24 +167,27 @@ fun DeliveryMapScreen(
                     }
                 }
 
-                // Botón de simulación flotante
-                Box(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .align(Alignment.TopEnd)
-                ) {
-                    Button(
-                        onClick = { viewModel.toggleSimulation() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (uiState.isSimulating) Color.Red else Color.Blue
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+                // Aviso mientras aún no llega la primera ubicación real del GPS
+                if (uiState.repartidorLatitud == 0.0 && uiState.repartidorLongitud == 0.0) {
+                    Card(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .align(Alignment.TopCenter),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground)
                     ) {
-                        Text(
-                            if (uiState.isSimulating) "DETENER SIMULACIÓN" else "SIMULAR MOVIMIENTO",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                color = PrimaryGreen,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Buscando tu ubicación…", color = TextPrimary)
+                        }
                     }
                 }
 

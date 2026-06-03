@@ -12,6 +12,5 @@ data class DeliveryMapUiState(
     val estado: String = "",
     val isLoading: Boolean = true,
     val error: String? = null,
-    val routePoints: List<LatLng> = emptyList(),
-    val isSimulating: Boolean = false
+    val routePoints: List<LatLng> = emptyList()
 )

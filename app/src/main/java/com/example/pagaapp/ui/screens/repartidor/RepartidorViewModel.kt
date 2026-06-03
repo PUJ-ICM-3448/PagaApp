@@ -46,10 +46,6 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
     private val notifiedRequests = mutableSetOf<String>()
     private var isFirstLoad = true
 
-    // Ubicación de fallback para el repartidor: Museo Nacional
-    private val fallbackLat = 4.6156
-    private val fallbackLon = -74.0690
-
     init {
         observarSolicitudes()
     }
@@ -112,12 +108,13 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
             .addOnSuccessListener { userDoc ->
                 val nombre = userDoc.getString("name") ?: currentUser.displayName ?: "Repartidor"
                 
+                // No se escribe ninguna ubicación aquí: la posición real del
+                // repartidor la fija el GPS desde DeliveryMapViewModel. Queda en 0.0
+                // hasta el primer fix (la UI muestra "Buscando tu ubicación…").
                 val updates = hashMapOf<String, Any>(
                     "estado" to "aceptado",
                     "repartidorId" to uid,
                     "repartidorNombre" to nombre,
-                    "repartidorLatitud" to fallbackLat,
-                    "repartidorLongitud" to fallbackLon,
                     "timestamp" to System.currentTimeMillis()
                 )
 
