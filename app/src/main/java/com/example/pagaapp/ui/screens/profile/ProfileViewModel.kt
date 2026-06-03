@@ -1,5 +1,6 @@
 package com.example.pagaapp.ui.screens.profile
 
+import android.graphics.Bitmap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.HelpOutline
@@ -25,6 +26,10 @@ class ProfileViewModel : ViewModel() {
         loadProfile()
     }
 
+    fun updateProfileImage(bitmap: Bitmap) {
+        _uiState.update { it.copy(profileBitmap = bitmap) }
+    }
+
     private fun loadProfile() {
         val uid = auth.currentUser?.uid ?: return
         
@@ -45,7 +50,7 @@ class ProfileViewModel : ViewModel() {
                                 name = name,
                                 email = email,
                                 initials = initials,
-                                memberSince = "January 2024", // Mocked for now
+                                memberSince = "January 2024",
                                 totalTransactions = 47,
                                 activeFriends = 12,
                                 totalShared = 847,

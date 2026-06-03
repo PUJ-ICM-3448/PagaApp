@@ -1,5 +1,12 @@
 package com.example.pagaapp.ui.screens.expenses
 
+import android.Manifest
+import android.graphics.Bitmap
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +23,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,12 +42,61 @@ fun RegisterPaymentScreen(
 ) {
     val uiState by expensesViewModel.uiState.collectAsState()
     val debt = uiState.youOweList.find { it.id == debtId } ?: uiState.owedToYouList.find { it.id == debtId }
+    val context = LocalContext.current
 
     var amount by remember { mutableStateOf(debt?.amount?.toString() ?: "") }
     var selectedMethod by remember { mutableStateOf("Bank Transfer") }
     var expanded by remember { mutableStateOf(false) }
+    
+    var capturedImage by remember { mutableStateOf<Bitmap?>(null) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) {
+            capturedImage = bitmap
+            selectedImageUri = null
+            Toast.makeText(context, "Evidencia capturada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            selectedImageUri = uri
+            capturedImage = null
+            Toast.makeText(context, "Imagen de galería seleccionada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            cameraLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Permiso de cámara necesario para capturar evidencia", Toast.LENGTH_LONG).show()
+        }
+    }
 
     val methods = listOf("Bank Transfer", "Cash", "Credit Card", "Digital Wallet")
+
+    if (showImageSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text("Seleccionar evidencia") },
+            text = { Text("¿Deseas capturar una foto del recibo o elegir de la galería?") },
+            confirmButton = {
+                Button(onClick = {
+                    showImageSourceDialog = false
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }) { Text("Cámara") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showImageSourceDialog = false
+                    galleryLauncher.launch("image/*")
+                }) { Text("Galería") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -160,31 +219,64 @@ fun RegisterPaymentScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(250.dp)
                         .background(Color.White, RoundedCornerShape(12.dp))
-                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .clickable { showImageSourceDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Outlined.FileUpload,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = Color.Gray
+                    if (capturedImage != null) {
+                        Image(
+                            bitmap = capturedImage!!.asImageBitmap(),
+                            contentDescription = "Evidence",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Upload screenshot or receipt",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            "Camera or Gallery",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
+                    } else if (selectedImageUri != null) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Outlined.FileUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = PrimaryGreen
+                            )
+                            Text("Recibo seleccionado de galería", color = PrimaryGreen, fontWeight = FontWeight.Medium)
+                            Text("URI: ${selectedImageUri!!.lastPathSegment}", fontSize = 10.sp, color = Color.Gray)
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Outlined.FileUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Upload screenshot or receipt",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                "Tap to use Camera or Gallery",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
+            }
+            
+            Button(
+                onClick = { 
+                    Toast.makeText(context, "Pago registrado con éxito", Toast.LENGTH_LONG).show()
+                    navController.popBackStack()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+            ) {
+                Text("Confirm Payment", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }

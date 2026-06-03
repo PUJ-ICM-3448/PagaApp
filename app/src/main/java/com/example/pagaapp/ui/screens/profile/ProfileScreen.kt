@@ -29,7 +29,11 @@ fun ProfileScreen(
             .background(Color(0xFFF3F4F6))
     ) {
         item {
-            ProfileHeader(profile)
+            ProfileHeader(
+                profile = profile,
+                profileBitmap = uiState.profileBitmap,
+                onImageCaptured = { viewModel.updateProfileImage(it) }
+            )
         }
 
         item {
@@ -51,6 +55,9 @@ fun ProfileScreen(
                     navController.navigate(Routes.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateToSensors = {
+                    navController.navigate(Routes.Sensors.route)
                 }
             )
         }

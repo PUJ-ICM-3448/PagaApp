@@ -1,32 +1,83 @@
 package com.example.pagaapp.ui.screens.profile
 
+import android.Manifest
+import android.graphics.Bitmap
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ProfileHeader(profile: ProfileModel) {
+fun ProfileHeader(
+    profile: ProfileModel,
+    profileBitmap: Bitmap?,
+    onImageCaptured: (Bitmap) -> Unit
+) {
+    val context = LocalContext.current
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) {
+            onImageCaptured(bitmap)
+            Toast.makeText(context, "Foto de perfil actualizada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            Toast.makeText(context, "Imagen de galería seleccionada (Simulación demo)", Toast.LENGTH_SHORT).show()
+            // In a real app we'd convert URI to Bitmap
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            cameraLauncher.launch()
+        } else {
+            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    if (showImageSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text("Cambiar foto de perfil") },
+            text = { Text("¿Deseas tomar una foto o elegir una de la galería?") },
+            confirmButton = {
+                Button(onClick = {
+                    showImageSourceDialog = false
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }) { Text("Cámara") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showImageSourceDialog = false
+                    galleryLauncher.launch("image/*")
+                }) { Text("Galería") }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -46,15 +97,47 @@ fun ProfileHeader(profile: ProfileModel) {
         Box(
             modifier = Modifier
                 .size(120.dp)
-                .background(Color(0xFFF3F4F6), CircleShape),
+                .clip(CircleShape)
+                .background(Color(0xFFF3F4F6))
+                .clickable { showImageSourceDialog = true },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = profile.initials,
-                style = MaterialTheme.typography.displaySmall,
-                color = Color(0xFF16A34A),
-                fontWeight = FontWeight.Normal
-            )
+            if (profileBitmap != null) {
+                Image(
+                    bitmap = profileBitmap.asImageBitmap(),
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Text(
+                    text = profile.initials,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = Color(0xFF16A34A),
+                    fontWeight = FontWeight.Normal
+                )
+            }
+            
+            // Camera icon overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.5f),
+                    shape = CircleShape,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Change photo",
+                        tint = Color.White,
+                        modifier = Modifier.padding(6.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))

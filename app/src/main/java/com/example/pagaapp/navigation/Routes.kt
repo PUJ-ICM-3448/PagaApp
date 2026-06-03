@@ -12,6 +12,7 @@ sealed class Routes(val route: String) {
     object Tracking : Routes("tracking")
     object History : Routes("history")
     object Profile : Routes("profile")
+    object Sensors : Routes("sensors")
     object Repartidor : Routes("repartidor")
     object DeliveryMap : Routes("delivery_map/{solicitudId}") {
         fun createRoute(solicitudId: String) = "delivery_map/$solicitudId"

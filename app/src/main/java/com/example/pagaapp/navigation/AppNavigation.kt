@@ -18,6 +18,7 @@ import com.example.pagaapp.ui.screens.home.HomeScreen
 import com.example.pagaapp.ui.screens.location.LocationScreen
 import com.example.pagaapp.ui.screens.login.LoginScreen
 import com.example.pagaapp.ui.screens.profile.ProfileScreen
+import com.example.pagaapp.ui.screens.profile.SensorsScreen
 import com.example.pagaapp.ui.screens.tracking.TrackingScreen
 import com.example.pagaapp.ui.screens.repartidor.RepartidorScreen
 import com.example.pagaapp.ui.screens.cash.RequestCashScreen
@@ -98,6 +99,10 @@ fun AppNavigation() {
 
             composable(Routes.Profile.route) {
                 ProfileScreen(navController)
+            }
+
+            composable(Routes.Sensors.route) {
+                SensorsScreen(navController)
             }
 
             composable(Routes.Repartidor.route) {
